@@ -1,0 +1,17 @@
+# Secrets : seul .env.example est versionné
+.env
+.env.*
+!.env.example
+
+# Éditeurs
+.idea/
+.vscode/
+*.iml
+
+# Système
+.DS_Store
+Thumbs.db
+
+# Frontend (étape 7)
+node_modules/
+dist/
