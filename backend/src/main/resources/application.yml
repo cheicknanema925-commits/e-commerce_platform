@@ -1,3 +1,7 @@
 spring:
   application:
     name: boutique-api
+  web:
+    error:
+      # Jamais de stack trace dans les réponses HTTP, quel que soit le profil
+      include-stacktrace: never

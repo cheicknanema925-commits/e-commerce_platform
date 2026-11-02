@@ -1,0 +1,5 @@
+logging:
+  structured:
+    format:
+      # Logs en JSON : lisibles par les outils de supervision (étape 9)
+      console: ecs

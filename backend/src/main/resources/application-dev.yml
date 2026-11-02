@@ -1,0 +1,6 @@
+spring:
+  web:
+    error:
+      # En développement : message et champs invalides visibles pour déboguer avec curl
+      include-message: always
+      include-binding-errors: always
