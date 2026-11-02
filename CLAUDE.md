@@ -15,10 +15,18 @@ Architecture : monolithe modulaire, un package par domaine (catalog, cart, order
 
 ```bash
 cd backend
-./mvnw spring-boot:run      # démarrer l'API sur http://localhost:8080
+./mvnw spring-boot:run      # démarrer l'API sur http://localhost:8080 (profil dev activé par le pom.xml)
 ./mvnw test                 # lancer les tests
 ./mvnw verify               # build complet + tests
+java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod   # comme en production
 ```
+
+## Profils
+
+- `application.yml` : configuration commune, sûre par défaut (jamais de stack trace dans les réponses)
+- `application-dev.yml` : messages d'erreur détaillés pour déboguer
+- `application-prod.yml` : logs JSON (format ECS)
+- Spring Boot 4 : les propriétés d'erreur sont `spring.web.error.*` (`server.error.*` est déprécié)
 
 ## Règles pour toi
 
