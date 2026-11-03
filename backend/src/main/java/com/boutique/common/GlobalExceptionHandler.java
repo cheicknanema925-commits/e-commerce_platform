@@ -47,6 +47,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return problem(HttpStatus.UNAUTHORIZED, "Non authentifié", ex.getMessage());
 	}
 
+	@ExceptionHandler(ExternalServiceException.class)
+	ProblemDetail handleExternalService(ExternalServiceException ex) {
+		log.warn("Service extérieur en erreur : {}", ex.getMessage(), ex);
+		return problem(HttpStatus.BAD_GATEWAY, "Service indisponible",
+				"Un service partenaire ne répond pas correctement. Réessayez dans quelques instants.");
+	}
+
 	@ExceptionHandler(ForbiddenException.class)
 	ProblemDetail handleForbidden(ForbiddenException ex) {
 		return problem(HttpStatus.FORBIDDEN, "Action interdite", ex.getMessage());

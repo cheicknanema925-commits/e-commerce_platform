@@ -46,7 +46,8 @@ class CheckoutIntegrationTests {
 	// Adresse à Dakar avec un point GPS (facultatif) pour aider le livreur
 	private static final String DELIVERY = """
 			{"delivery": {"addressLine": "Rue 10, Sicap Liberté 6", "city": "Dakar", "phone": "+221 77 123 45 67",
-			 "latitude": 14.7167, "longitude": -17.4677}}
+			 "latitude": 14.7167, "longitude": -17.4677},
+			 "paymentMethod": "ONLINE"}
 			""";
 
 	@Autowired
@@ -240,7 +241,8 @@ class CheckoutIntegrationTests {
 				""".formatted(boubouId)).andExpect(status().isOk());
 
 		mockMvc.perform(post("/api/orders").with(customer(awaId)).contentType(MediaType.APPLICATION_JSON).content("""
-				{"delivery": {"addressLine": "Rue 10", "city": "Dakar", "phone": "pas un numéro", "latitude": 120}}
+				{"delivery": {"addressLine": "Rue 10", "city": "Dakar", "phone": "pas un numéro", "latitude": 120},
+				 "paymentMethod": "ONLINE"}
 				"""))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.errors[*].field").value(containsInAnyOrder("delivery.phone", "delivery.latitude")));

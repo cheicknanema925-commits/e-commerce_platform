@@ -13,6 +13,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -35,10 +36,14 @@ public class Payment {
 
 	private String providerReference;
 
+	// Montant de la commande au moment du paiement, calculé par le serveur (jamais envoyé par le client)
 	private BigDecimal amount;
 
 	@Enumerated(EnumType.STRING)
 	private PaymentStatus status;
+
+	@Version
+	private long version;
 
 	@CreationTimestamp
 	private Instant createdAt;
@@ -49,11 +54,24 @@ public class Payment {
 	protected Payment() {
 	}
 
-	public Payment(Order order, String provider, BigDecimal amount) {
+	public Payment(Order order, String provider, BigDecimal amount, String providerReference) {
 		this.order = order;
 		this.provider = provider;
 		this.amount = amount;
+		this.providerReference = providerReference;
 		this.status = PaymentStatus.PENDING;
+	}
+
+	public boolean isPending() {
+		return status == PaymentStatus.PENDING;
+	}
+
+	public void succeed() {
+		status = PaymentStatus.SUCCEEDED;
+	}
+
+	public void fail() {
+		status = PaymentStatus.FAILED;
 	}
 
 	public Long getId() {

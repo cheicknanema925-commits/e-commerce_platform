@@ -47,6 +47,28 @@ boutique:
       # Les jetons Keycloak doivent contenir cette audience (claim « aud »)
       audience: boutique-api
 
+  payment:
+    # fake (développement, tests) ou paydunya. Le faux fournisseur est refusé avec le profil prod.
+    provider: ${PAYMENT_PROVIDER:fake}
+    # Adresse publique de l'API (PayDunya y envoie ses notifications) et du frontend (pages de retour)
+    public-api-url: ${PUBLIC_API_URL:http://localhost:8080}
+    frontend-url: ${FRONTEND_URL:http://localhost:5173}
+    store-name: Boutique
+    reconciliation:
+      enabled: true
+      # Toutes les 5 minutes, on revérifie les paiements en attente depuis plus de 10 minutes
+      interval: PT5M
+      pending-delay: PT10M
+    paydunya:
+      # test = bac à sable (aucun argent réel), live = production
+      mode: ${PAYDUNYA_MODE:test}
+      master-key: ${PAYDUNYA_MASTER_KEY:}
+      private-key: ${PAYDUNYA_PRIVATE_KEY:}
+      token: ${PAYDUNYA_TOKEN:}
+    fake:
+      # Secret du faux fournisseur uniquement (jamais utilisé en production)
+      webhook-secret: secret-du-faux-fournisseur
+
 # Documentation de l'API désactivée par défaut : on choisit explicitement où l'exposer (activée en dev)
 springdoc:
   api-docs:

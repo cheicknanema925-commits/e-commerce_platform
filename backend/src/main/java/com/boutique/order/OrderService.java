@@ -80,7 +80,7 @@ public class OrderService {
 			.stream()
 			.map((item) -> new OrderLineRequest(item.getProduct().getId(), item.getQuantity()))
 			.toList();
-		Order order = placeOrder(userId, lines);
+		Order order = placeOrder(userId, lines, request.paymentMethod());
 		DeliveryAddressRequest address = request.delivery();
 		deliveryRepository.save(new Delivery(order, address.addressLine().strip(), address.city().strip(),
 				address.phone().strip(), address.latitude(), address.longitude()));
@@ -90,7 +90,7 @@ public class OrderService {
 
 	@Transactional
 	public OrderResponse createOrder(Long userId, List<OrderLineRequest> lines) {
-		return OrderResponse.from(placeOrder(userId, lines));
+		return OrderResponse.from(placeOrder(userId, lines, PaymentMethod.ONLINE));
 	}
 
 	@Transactional
@@ -111,6 +111,12 @@ public class OrderService {
 			restock(order);
 		}
 		deliveryRepository.findByOrderId(orderId).ifPresent((delivery) -> delivery.follow(target, Instant.now()));
+		if (target == OrderStatus.DELIVERED) {
+			// Écouté de façon synchrone par le module paiement : les espèces encaissées sont enregistrées
+			// dans la même transaction que la remise du colis
+			eventPublisher
+				.publishEvent(new OrderDeliveredEvent(order.getId(), order.getPaymentMethod(), order.getTotalAmount()));
+		}
 		return OrderResponse.from(order);
 	}
 
@@ -125,9 +131,9 @@ public class OrderService {
 
 	// Tout ou rien : si une ligne échoue (stock insuffisant), la commande ET les baisses de stock déjà faites
 	// sont annulées par le rollback de la transaction
-	private Order placeOrder(Long userId, List<OrderLineRequest> lines) {
+	private Order placeOrder(Long userId, List<OrderLineRequest> lines, PaymentMethod paymentMethod) {
 		User user = userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException(userId));
-		Order order = new Order(user);
+		Order order = new Order(user, paymentMethod);
 		for (OrderLineRequest line : lines) {
 			Product product = productRepository.findById(line.productId())
 				.orElseThrow(() -> new ProductNotFoundException(line.productId()));

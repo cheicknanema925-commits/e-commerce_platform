@@ -57,6 +57,9 @@ public class SecurityConfig {
 				.permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/products/**", "/api/categories/**")
 				.permitAll()
+				// Appelé par le fournisseur de paiement, sans jeton : l'authenticité est vérifiée dans PaymentService
+				.requestMatchers(HttpMethod.POST, "/api/payments/webhooks/**")
+				.permitAll()
 				.requestMatchers("/actuator/health/**", "/error")
 				.permitAll()
 				.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
