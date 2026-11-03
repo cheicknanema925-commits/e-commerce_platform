@@ -62,14 +62,24 @@ public class OrderService {
 			.orElseThrow(() -> new DeliveryNotFoundException(orderId));
 	}
 
-	// Pagination en 2 temps : la page de commandes (sans lignes), puis les lignes de CES commandes en 1 requête
-	public PageResponse<OrderResponse> findAll(OrderStatus status, Pageable pageable) {
+	// Pagination en 2 temps : la page de commandes (sans lignes), puis les lignes et clients de CES commandes
+	public PageResponse<AdminOrderResponse> findAll(OrderStatus status, Pageable pageable) {
 		Page<Order> page = (status == null) ? orderRepository.findAll(pageable)
 				: orderRepository.findByStatus(status, pageable);
 		if (page.hasContent()) {
 			orderRepository.fetchItems(page.map(Order::getId).getContent());
 		}
-		return PageResponse.from(page.map(OrderResponse::from));
+		return PageResponse.from(page.map(AdminOrderResponse::from));
+	}
+
+	public AdminOrderResponse findForAdmin(Long orderId) {
+		return AdminOrderResponse.from(getOrder(orderId));
+	}
+
+	public DeliveryResponse findDeliveryForAdmin(Long orderId) {
+		return deliveryRepository.findByOrderId(orderId)
+			.map(DeliveryResponse::from)
+			.orElseThrow(() -> new DeliveryNotFoundException(orderId));
 	}
 
 	// Commande à partir du panier : prix relus en base, stock réservé, livraison créée, panier vidé. Tout ou rien.
@@ -103,7 +113,7 @@ public class OrderService {
 
 	// Appel DIRECT pour la livraison : elle doit changer dans la MÊME transaction que la commande (tout ou rien)
 	@Transactional
-	public OrderResponse changeStatusAsAdmin(Long orderId, OrderStatus target) {
+	public AdminOrderResponse changeStatusAsAdmin(Long orderId, OrderStatus target) {
 		Order order = getOrder(orderId);
 		order.changeStatus(target, OrderActor.ADMIN);
 		if (target == OrderStatus.CANCELLED) {
@@ -117,7 +127,7 @@ public class OrderService {
 			eventPublisher
 				.publishEvent(new OrderDeliveredEvent(order.getId(), order.getPaymentMethod(), order.getTotalAmount()));
 		}
-		return OrderResponse.from(order);
+		return AdminOrderResponse.from(order);
 	}
 
 	// ÉVÉNEMENT pour ce qui n'est qu'une conséquence (notifier le client…) : le module commande ne connaît pas

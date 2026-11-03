@@ -1,5 +1,6 @@
 package com.boutique.payment;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -12,6 +13,10 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 	Optional<Payment> findByProviderReference(String providerReference);
 
 	List<Payment> findByOrderId(Long orderId);
+
+	// Argent réellement encaissé : paiements en ligne confirmés + espèces reçues à la livraison
+	@Query("select coalesce(sum(p.amount), 0) from Payment p where p.status = com.boutique.payment.PaymentStatus.SUCCEEDED")
+	BigDecimal totalCollected();
 
 	// Paiements restés en attente trop longtemps : la réconciliation redemande leur statut au fournisseur
 	@Query("select p.id from Payment p where p.status = com.boutique.payment.PaymentStatus.PENDING "

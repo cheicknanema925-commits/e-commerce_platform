@@ -29,14 +29,24 @@ public class AdminOrderController {
 	}
 
 	@GetMapping
-	public PageResponse<OrderResponse> findAll(@RequestParam(required = false) OrderStatus status,
+	public PageResponse<AdminOrderResponse> findAll(@RequestParam(required = false) OrderStatus status,
 			@PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
 		return orderService.findAll(status, pageable);
 	}
 
+	@GetMapping("/{id}")
+	public AdminOrderResponse findOne(@PathVariable Long id) {
+		return orderService.findForAdmin(id);
+	}
+
+	@GetMapping("/{id}/delivery")
+	public DeliveryResponse delivery(@PathVariable Long id) {
+		return orderService.findDeliveryForAdmin(id);
+	}
+
 	// La machine à états refuse toute transition non prévue (409), par exemple PAID → DELIVERED
 	@PatchMapping("/{id}/status")
-	public OrderResponse changeStatus(@PathVariable Long id, @Valid @RequestBody ChangeStatusRequest request) {
+	public AdminOrderResponse changeStatus(@PathVariable Long id, @Valid @RequestBody ChangeStatusRequest request) {
 		return orderService.changeStatusAsAdmin(id, request.status());
 	}
 

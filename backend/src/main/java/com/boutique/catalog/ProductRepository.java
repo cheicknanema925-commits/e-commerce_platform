@@ -1,5 +1,7 @@
 package com.boutique.catalog;
 
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -18,6 +20,9 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 	@Override
 	@EntityGraph(attributePaths = "category")
 	Page<Product> findAll(Pageable pageable);
+
+	// Produits bientôt en rupture (requête dérivée : « Top10 » limite, « LessThanEqual » compare, « OrderBy » trie)
+	List<Product> findTop10ByStockLessThanEqualOrderByStockAsc(int stock);
 
 	// Requête dérivée : Spring Data lit le nom de la méthode et écrit le SQL (... WHERE category.slug = ?)
 	@EntityGraph(attributePaths = "category")

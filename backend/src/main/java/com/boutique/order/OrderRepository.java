@@ -28,8 +28,20 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
 	Page<Order> findByStatus(OrderStatus status, Pageable pageable);
 
-	// 2e temps de la pagination : charger les lignes des commandes de la page (on ne pagine jamais un JOIN FETCH)
-	@Query("select distinct o from Order o left join fetch o.items where o.id in :ids")
+	// 2e temps de la pagination : charger les lignes ET le client des commandes de la page (jamais de JOIN FETCH paginé)
+	@Query("select distinct o from Order o left join fetch o.items join fetch o.user where o.id in :ids")
 	List<Order> fetchItems(Collection<Long> ids);
+
+	@Query("select o.status as status, count(o) as count from Order o group by o.status")
+	List<StatusCount> countByStatus();
+
+	// Projection : Spring Data remplit cette interface avec les colonnes nommées (alias) de la requête
+	interface StatusCount {
+
+		OrderStatus getStatus();
+
+		long getCount();
+
+	}
 
 }
