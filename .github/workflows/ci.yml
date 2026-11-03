@@ -1,0 +1,47 @@
+# Intégration continue : compile et teste le backend à chaque pull request et à chaque arrivée sur main
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Moindre privilège : le workflow peut seulement lire le code
+permissions:
+  contents: read
+
+# Un nouveau push sur la même branche annule l'exécution précédente devenue inutile
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v7
+
+      - name: Installer Java 21 (Temurin) avec le cache Maven
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      # verify = compilation + tests unitaires + tests Testcontainers (Docker est fourni par ubuntu-latest) + JaCoCo
+      - name: Compiler et tester
+        run: ./mvnw -B verify
+
+      - name: Publier le rapport de couverture JaCoCo
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: jacoco-report
+          path: backend/target/site/jacoco
+          if-no-files-found: ignore
+          retention-days: 14

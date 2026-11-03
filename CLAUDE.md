@@ -32,6 +32,24 @@ java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod  
 - `application-prod.yml` : logs JSON (format ECS)
 - Spring Boot 4 : les propriétés d'erreur sont `spring.web.error.*` (`server.error.*` est déprécié)
 
+## Tests et CI
+
+- Unitaires (JUnit + Mockito, sans Spring) pour la logique métier
+- `@WebMvcTest` + `@MockitoBean` pour les contrôleurs (codes HTTP, validation, format des erreurs)
+- `@DataJpaTest` + Testcontainers pour les repositories (rollback automatique après chaque test)
+- `@SpringBootTest` + Testcontainers pour les parcours complets
+- JaCoCo : `./mvnw verify` → `backend/target/site/jacoco/index.html`
+- CI : `.github/workflows/ci.yml` lance `./mvnw -B verify` sur chaque pull request et sur main
+- Swagger (springdoc 3.x) : désactivé par défaut, activé en dev → `/swagger-ui.html`
+
+## Erreurs
+
+- `common/GlobalExceptionHandler` (`@RestControllerAdvice`) : toutes les erreurs au format `ProblemDetail` (RFC 9457)
+- Lever une sous-classe de `NotFoundException` (404) ou `ConflictException` (409), jamais `@ResponseStatus`
+- 500 : message générique + `errorId`, le détail technique uniquement dans les logs
+- Spring Boot 4 : `@WebMvcTest`/`@AutoConfigureMockMvc` dans `org.springframework.boot.webmvc.test.autoconfigure`,
+  `PropertyReferenceException` dans `org.springframework.data.core`
+
 ## Base de données
 
 - Schéma géré uniquement par Flyway : `backend/src/main/resources/db/migration/V<n>__<description>.sql`

@@ -21,3 +21,10 @@ spring:
     error:
       # Jamais de stack trace dans les réponses HTTP, quel que soit le profil
       include-stacktrace: never
+
+# Documentation de l'API désactivée par défaut : on choisit explicitement où l'exposer (activée en dev)
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

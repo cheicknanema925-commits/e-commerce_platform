@@ -1,5 +1,7 @@
 # Boutique Spring Boot
 
+[![CI](https://github.com/cheicknanema925-commits/e-commerce_platform/actions/workflows/ci.yml/badge.svg)](https://github.com/cheicknanema925-commits/e-commerce_platform/actions/workflows/ci.yml)
+
 Boutique en ligne complète construite avec Spring Boot : API sécurisée, paiement mobile money, agent IA avec outils, frontend React, déploiement Docker et CI/CD.
 
 > Projet en cours de construction.
@@ -25,3 +27,14 @@ Vérifier que l'API répond :
 curl http://localhost:8080/actuator/health
 # {"status":"UP"}
 ```
+
+Documentation interactive de l'API (profil dev) : http://localhost:8080/swagger-ui.html
+
+## Tests
+
+```bash
+cd backend
+./mvnw verify    # tests unitaires, @WebMvcTest, @DataJpaTest, Testcontainers + couverture JaCoCo
+```
+
+Rapport de couverture : `backend/target/site/jacoco/index.html`. La CI GitHub Actions lance la même commande à chaque pull request.

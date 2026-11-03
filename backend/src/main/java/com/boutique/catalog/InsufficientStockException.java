@@ -1,10 +1,8 @@
 package com.boutique.catalog;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.ResponseStatus;
+import com.boutique.common.ConflictException;
 
-@ResponseStatus(HttpStatus.CONFLICT)
-public class InsufficientStockException extends RuntimeException {
+public class InsufficientStockException extends ConflictException {
 
 	public InsufficientStockException(Long productId, int available, int requested) {
 		super("Stock insuffisant pour le produit " + productId + " : " + available + " disponible(s), "
