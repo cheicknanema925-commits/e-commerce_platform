@@ -1,10 +1,8 @@
 package com.boutique.catalog;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.ResponseStatus;
+import com.boutique.common.NotFoundException;
 
-@ResponseStatus(HttpStatus.NOT_FOUND)
-public class CategoryNotFoundException extends RuntimeException {
+public class CategoryNotFoundException extends NotFoundException {
 
 	public CategoryNotFoundException(Long id) {
 		super("Catégorie introuvable : " + id);

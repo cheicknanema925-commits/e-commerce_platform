@@ -32,6 +32,14 @@ java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod  
 - `application-prod.yml` : logs JSON (format ECS)
 - Spring Boot 4 : les propriétés d'erreur sont `spring.web.error.*` (`server.error.*` est déprécié)
 
+## Erreurs
+
+- `common/GlobalExceptionHandler` (`@RestControllerAdvice`) : toutes les erreurs au format `ProblemDetail` (RFC 9457)
+- Lever une sous-classe de `NotFoundException` (404) ou `ConflictException` (409), jamais `@ResponseStatus`
+- 500 : message générique + `errorId`, le détail technique uniquement dans les logs
+- Spring Boot 4 : `@WebMvcTest`/`@AutoConfigureMockMvc` dans `org.springframework.boot.webmvc.test.autoconfigure`,
+  `PropertyReferenceException` dans `org.springframework.data.core`
+
 ## Base de données
 
 - Schéma géré uniquement par Flyway : `backend/src/main/resources/db/migration/V<n>__<description>.sql`
