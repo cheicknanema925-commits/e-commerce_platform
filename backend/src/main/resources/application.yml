@@ -41,6 +41,11 @@ boutique:
       # Premier compte ADMIN créé au démarrage s'il n'existe pas (vide = aucun compte créé)
       email: ${ADMIN_EMAIL:}
       password: ${ADMIN_PASSWORD:}
+    keycloak:
+      # Ex. http://localhost:8180/realms/boutique ; vide = Keycloak désactivé (seuls nos propres jetons sont acceptés)
+      issuer-uri: ${KEYCLOAK_ISSUER_URI:}
+      # Les jetons Keycloak doivent contenir cette audience (claim « aud »)
+      audience: boutique-api
 
 # Documentation de l'API désactivée par défaut : on choisit explicitement où l'exposer (activée en dev)
 springdoc:

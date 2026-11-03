@@ -49,7 +49,14 @@ java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod  
   rotation à chaque usage, réutilisation détectée → toutes les sessions révoquées
 - Public : `GET` catalogue, `/api/auth/**`, health, docs ; `/api/admin/**` = ADMIN ; écritures du catalogue = `@PreAuthorize` ADMIN ;
   tout le reste = authentifié
-- Identité TOUJOURS lue dans le jeton (`CurrentUser.id(jwt)`), jamais dans l'URL ou le corps (protection IDOR)
+- Deux émetteurs acceptés (`JwtIssuerAuthenticationManagerResolver`, choix par le claim `iss`) : nos jetons HS256 (rôles
+  dans `roles`) et Keycloak RS256 via JWKS (rôles dans `realm_access.roles`, audience `boutique-api` obligatoire) ;
+  `KEYCLOAK_ISSUER_URI` vide = Keycloak désactivé
+- Identité TOUJOURS lue dans le jeton (`CurrentUserResolver.userId(jwt)`), jamais dans l'URL ou le corps (protection IDOR) ;
+  jeton Keycloak → compte local créé à la première visite (`users.external_id` = `sub`), relié à un compte existant
+  seulement si `email_verified` est vrai
+- Keycloak (dev) : `docker compose --profile keycloak up -d --wait` puis `./keycloak/demo-users.sh` (fatou CUSTOMER,
+  mariama ADMIN) ; realm importé depuis `keycloak/realm/realm-boutique.json` ; console http://localhost:8180
 - Connexion : verrouillage après 5 échecs (15 min), audit dans `login_events`, même message d'erreur quel que soit le cas
 - Connexion ET inscription : 10 requêtes/min par IP (`AuthRateLimitFilter`, en mémoire) ; tous les champs d'entrée ont un `@Size`
 - Audit OWASP et risques planifiés : `docs/audit-securite.md` (à relire aux étapes 7, 9 et 10)

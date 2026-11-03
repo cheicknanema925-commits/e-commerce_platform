@@ -43,6 +43,22 @@ curl -X POST localhost:8080/api/auth/login -H "Content-Type: application/json" \
 curl localhost:8080/api/users/me -H "Authorization: Bearer <accessToken>"
 ```
 
+### Connexion par Keycloak (OpenID Connect)
+
+L'API accepte aussi les jetons du realm Keycloak `boutique` (rôles `CUSTOMER` / `ADMIN`). Le compte local est créé
+automatiquement à la première requête.
+
+```bash
+docker compose --profile keycloak up -d --wait   # Keycloak sur http://localhost:8180
+./keycloak/demo-users.sh                         # comptes de démo : fatou (CUSTOMER), mariama (ADMIN)
+TOKEN=$(curl -s -X POST localhost:8180/realms/boutique/protocol/openid-connect/token \
+  -d grant_type=password -d client_id=boutique-cli -d username=fatou -d "password=<KEYCLOAK_DEMO_PASSWORD>" | jq -r .access_token)
+curl localhost:8080/api/users/me -H "Authorization: Bearer $TOKEN"
+```
+
+Le client `boutique-cli` (mot de passe direct) sert uniquement aux tests en ligne de commande ; le frontend utilisera
+le client `boutique-frontend` (Authorization Code + PKCE).
+
 ## Tests
 
 ```bash
