@@ -37,6 +37,75 @@ export type Rating = {
   count: number
 }
 
+export type AccessToken = {
+  accessToken: string
+  tokenType: string
+  expiresIn: number
+}
+
+export type UserProfile = {
+  id: number
+  email: string
+  fullName: string
+  role: 'CUSTOMER' | 'ADMIN'
+}
+
+export type CartItem = {
+  productId: number
+  productName: string
+  unitPrice: number
+  quantity: number
+  subtotal: number
+}
+
+export type Cart = {
+  items: CartItem[]
+  total: number
+}
+
+export type OrderStatus = 'CREATED' | 'PAID' | 'PREPARING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
+
+export type PaymentMethod = 'ONLINE' | 'CASH_ON_DELIVERY'
+
+export type OrderItem = CartItem
+
+export type Order = {
+  id: number
+  status: OrderStatus
+  paymentMethod: PaymentMethod
+  totalAmount: number
+  createdAt: string
+  items: OrderItem[]
+}
+
+export type DeliveryStatus = 'PENDING' | 'PREPARING' | 'SHIPPED' | 'DELIVERED'
+
+export type Delivery = {
+  status: DeliveryStatus
+  addressLine: string
+  city: string
+  phone: string
+  latitude: number | null
+  longitude: number | null
+  shippedAt: string | null
+  deliveredAt: string | null
+}
+
+export type DeliveryAddress = {
+  addressLine: string
+  city: string
+  phone: string
+  latitude?: number
+  longitude?: number
+}
+
+export type PaymentSession = {
+  paymentId: number
+  status: 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'REFUNDED'
+  amount: number
+  checkoutUrl: string
+}
+
 // Format d'erreur standard de l'API (RFC 9457), produit par GlobalExceptionHandler
 export type ProblemDetail = {
   title?: string
