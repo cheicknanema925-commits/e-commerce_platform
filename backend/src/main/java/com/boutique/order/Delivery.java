@@ -35,6 +35,7 @@ public class Delivery {
 
 	private String phone;
 
+	// Point GPS facultatif donné par le client (utile quand l'adresse seule ne suffit pas au livreur)
 	private BigDecimal latitude;
 
 	private BigDecimal longitude;
@@ -46,12 +47,33 @@ public class Delivery {
 	protected Delivery() {
 	}
 
-	public Delivery(Order order, String addressLine, String city, String phone) {
+	public Delivery(Order order, String addressLine, String city, String phone, BigDecimal latitude,
+			BigDecimal longitude) {
 		this.order = order;
 		this.addressLine = addressLine;
 		this.city = city;
 		this.phone = phone;
+		this.latitude = latitude;
+		this.longitude = longitude;
 		this.status = DeliveryStatus.PENDING;
+	}
+
+	// La livraison suit la commande : la machine à états de la commande reste la seule source de vérité
+	void follow(OrderStatus orderStatus, Instant now) {
+		switch (orderStatus) {
+			case PREPARING -> status = DeliveryStatus.PREPARING;
+			case SHIPPED -> {
+				status = DeliveryStatus.SHIPPED;
+				shippedAt = now;
+			}
+			case DELIVERED -> {
+				status = DeliveryStatus.DELIVERED;
+				deliveredAt = now;
+			}
+			default -> {
+				// CREATED, PAID, CANCELLED : rien ne bouge côté livraison
+			}
+		}
 	}
 
 	public Long getId() {

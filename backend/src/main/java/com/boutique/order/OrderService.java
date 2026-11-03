@@ -1,7 +1,9 @@
 package com.boutique.order;
 
+import java.time.Instant;
 import java.util.List;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -24,18 +26,25 @@ public class OrderService {
 
 	private final OrderRepository orderRepository;
 
+	private final DeliveryRepository deliveryRepository;
+
 	private final ProductRepository productRepository;
 
 	private final UserRepository userRepository;
 
 	private final CartRepository cartRepository;
 
-	public OrderService(OrderRepository orderRepository, ProductRepository productRepository,
-			UserRepository userRepository, CartRepository cartRepository) {
+	private final ApplicationEventPublisher eventPublisher;
+
+	public OrderService(OrderRepository orderRepository, DeliveryRepository deliveryRepository,
+			ProductRepository productRepository, UserRepository userRepository, CartRepository cartRepository,
+			ApplicationEventPublisher eventPublisher) {
 		this.orderRepository = orderRepository;
+		this.deliveryRepository = deliveryRepository;
 		this.productRepository = productRepository;
 		this.userRepository = userRepository;
 		this.cartRepository = cartRepository;
+		this.eventPublisher = eventPublisher;
 	}
 
 	public List<OrderResponse> findOrdersOfUser(Long userId) {
@@ -44,6 +53,13 @@ public class OrderService {
 
 	public OrderResponse findOrderOfUser(Long userId, Long orderId) {
 		return OrderResponse.from(getOwnedOrder(userId, orderId));
+	}
+
+	public DeliveryResponse findDeliveryOfUser(Long userId, Long orderId) {
+		getOwnedOrder(userId, orderId);
+		return deliveryRepository.findByOrderId(orderId)
+			.map(DeliveryResponse::from)
+			.orElseThrow(() -> new DeliveryNotFoundException(orderId));
 	}
 
 	// Pagination en 2 temps : la page de commandes (sans lignes), puis les lignes de CES commandes en 1 requête
@@ -56,32 +72,25 @@ public class OrderService {
 		return PageResponse.from(page.map(OrderResponse::from));
 	}
 
-	// Commande à partir du panier : prix relus en base, stock réservé, panier vidé. Tout ou rien.
+	// Commande à partir du panier : prix relus en base, stock réservé, livraison créée, panier vidé. Tout ou rien.
 	@Transactional
-	public OrderResponse checkout(Long userId) {
+	public OrderResponse checkout(Long userId, CheckoutRequest request) {
 		Cart cart = cartRepository.findByUserId(userId).filter((c) -> !c.isEmpty()).orElseThrow(EmptyCartException::new);
 		List<OrderLineRequest> lines = cart.getItems()
 			.stream()
 			.map((item) -> new OrderLineRequest(item.getProduct().getId(), item.getQuantity()))
 			.toList();
-		OrderResponse order = createOrder(userId, lines);
+		Order order = placeOrder(userId, lines);
+		DeliveryAddressRequest address = request.delivery();
+		deliveryRepository.save(new Delivery(order, address.addressLine().strip(), address.city().strip(),
+				address.phone().strip(), address.latitude(), address.longitude()));
 		cart.clear();
-		return order;
+		return OrderResponse.from(order);
 	}
 
-	// Tout ou rien : si une ligne échoue (stock insuffisant), la commande ET les baisses de stock déjà faites
-	// sont annulées par le rollback de la transaction
 	@Transactional
 	public OrderResponse createOrder(Long userId, List<OrderLineRequest> lines) {
-		User user = userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException(userId));
-		Order order = new Order(user);
-		for (OrderLineRequest line : lines) {
-			Product product = productRepository.findById(line.productId())
-				.orElseThrow(() -> new ProductNotFoundException(line.productId()));
-			product.removeStock(line.quantity());
-			order.addItem(product, line.quantity());
-		}
-		return OrderResponse.from(orderRepository.save(order));
+		return OrderResponse.from(placeOrder(userId, lines));
 	}
 
 	@Transactional
@@ -92,6 +101,7 @@ public class OrderService {
 		return OrderResponse.from(order);
 	}
 
+	// Appel DIRECT pour la livraison : elle doit changer dans la MÊME transaction que la commande (tout ou rien)
 	@Transactional
 	public OrderResponse changeStatusAsAdmin(Long orderId, OrderStatus target) {
 		Order order = getOrder(orderId);
@@ -100,13 +110,31 @@ public class OrderService {
 			// Étape 6 : une commande déjà payée devra aussi être remboursée
 			restock(order);
 		}
+		deliveryRepository.findByOrderId(orderId).ifPresent((delivery) -> delivery.follow(target, Instant.now()));
 		return OrderResponse.from(order);
 	}
 
-	// Appelé uniquement par le traitement du webhook de paiement (étape 6), jamais par une route publique
+	// ÉVÉNEMENT pour ce qui n'est qu'une conséquence (notifier le client…) : le module commande ne connaît pas
+	// ses auditeurs. Appelé uniquement par le traitement du webhook de paiement (étape 6).
 	@Transactional
 	public void markPaid(Long orderId) {
-		getOrder(orderId).changeStatus(OrderStatus.PAID, OrderActor.PAYMENT_PROVIDER);
+		Order order = getOrder(orderId);
+		order.changeStatus(OrderStatus.PAID, OrderActor.PAYMENT_PROVIDER);
+		eventPublisher.publishEvent(new OrderPaidEvent(order.getId(), order.getUser().getEmail(), order.getTotalAmount()));
+	}
+
+	// Tout ou rien : si une ligne échoue (stock insuffisant), la commande ET les baisses de stock déjà faites
+	// sont annulées par le rollback de la transaction
+	private Order placeOrder(Long userId, List<OrderLineRequest> lines) {
+		User user = userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException(userId));
+		Order order = new Order(user);
+		for (OrderLineRequest line : lines) {
+			Product product = productRepository.findById(line.productId())
+				.orElseThrow(() -> new ProductNotFoundException(line.productId()));
+			product.removeStock(line.quantity());
+			order.addItem(product, line.quantity());
+		}
+		return orderRepository.save(order);
 	}
 
 	private void restock(Order order) {

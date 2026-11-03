@@ -3,7 +3,8 @@
 Je construis une boutique en ligne pour APPRENDRE Spring Boot en profondeur.
 Stack : Java 21, Spring Boot 4.1, Maven, PostgreSQL, Flyway, Spring Security (JWT puis Keycloak),
 Spring AI 2.x, React + TypeScript, Docker, GitHub Actions.
-Architecture : monolithe modulaire, un package par domaine (catalog, cart, order, payment, user, agent).
+Architecture : monolithe modulaire, un package par domaine (catalog, cart, order, review, payment, user, notification, agent),
+sans dépendance circulaire entre packages (ex. review dépend de catalog et order, jamais l'inverse).
 
 ## Structure du dépôt
 
@@ -78,6 +79,12 @@ java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod  
 - Id dans l'URL (`/api/orders/{id}`) : `findByIdAndUserId` → 404 si la commande appartient à un autre (IDOR)
 - Liste paginée avec relations : page d'abord, puis `fetchItems(ids)` (jamais de JOIN FETCH paginé sur une collection)
 - Tests : `jwt().jwt(t -> t.issuer("boutique-api").subject(id))` simule un utilisateur local
+- Commande = adresse de livraison obligatoire (GPS facultatif) ; `Delivery` suit le statut de la commande par appel
+  direct (même transaction) ; pas de `@OneToOne` inverse sur `Order` (toujours chargé, provoquerait des N+1)
+- Avis (package `review`) : uniquement si une commande DELIVERED contient le produit, une fois (UNIQUE en base) ;
+  auteur affiché « Prénom N. » ; commentaires = texte non fiable (XSS côté frontend, injection de prompt pour l'agent)
+- Événements : appel direct pour ce qui doit être dans la même transaction, `ApplicationEvent` pour les conséquences ;
+  `OrderPaidEvent` → `@TransactionalEventListener(AFTER_COMMIT)` dans `notification` (rien n'est envoyé si rollback)
 
 ## Erreurs
 
