@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router'
 import { ApiError } from '../api/client.ts'
+import { AddToCart } from '../components/AddToCart.tsx'
 import { ErrorMessage } from '../components/ErrorMessage.tsx'
 import { StarRating } from '../components/StarRating.tsx'
 import { useProduct, useRating, useReviews } from '../hooks/useCatalog.ts'
@@ -51,6 +52,7 @@ export function ProductPage() {
           <p className={`mt-1 ${stock > 0 ? 'text-stone-700' : 'font-medium text-red-700'}`}>
             {stock > 0 ? `En stock (${stock} disponible${stock > 1 ? 's' : ''})` : 'Rupture de stock'}
           </p>
+          <AddToCart product={product.data} />
           {description && <p className="mt-6 leading-relaxed text-stone-700">{description}</p>}
         </div>
       </article>

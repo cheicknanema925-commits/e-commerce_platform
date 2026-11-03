@@ -35,6 +35,13 @@ java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod  
 - Couches : `api/` (fetch + `ApiError` lisant les ProblemDetail), `hooks/` (TanStack Query), `components/`, `pages/`
 - Filtres du catalogue dans l'URL (`useSearchParams`) ; accessibilité : labels, `role="alert"`, `aria-live`, focus visible
 - Textes venant des clients (avis) affichés comme texte React, jamais en HTML (pas de `dangerouslySetInnerHTML`)
+- Session : jeton d'accès UNIQUEMENT en mémoire (`api/client.ts`, jamais localStorage) ; refresh token dans le cookie
+  httpOnly `boutique_refresh` (SameSite=Strict, Path=/api/auth, Secure sauf profil dev) ; `restoreSession` au chargement ;
+  renouvellement unique à la fois (sinon l'API croit à un vol et coupe toutes les sessions) ; 401 → refresh → rejeu
+- `RequireAuth` pour les pages privées (confort d'affichage, l'API reste la vraie protection) ; `safeReturnPath`
+  contre les redirections ouvertes (?retour=…)
+- Paiement en ligne : redirection vers `checkoutUrl` du fournisseur ; au retour, on attend la confirmation du serveur
+  (polling) ; en dev, `/paiement-simule/:référence` imite la page du fournisseur
 - CI : job `frontend` (npm ci, lint, test, build)
 
 ## Profils
@@ -57,8 +64,9 @@ java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod  
 ## Sécurité
 
 - `security/SecurityConfig` : API sans état, JWT HS256 vérifiés par le resource server de Spring Security
-- Jeton d'accès 15 min (claims `sub` = id utilisateur, `roles`), refresh token 7 jours opaque, stocké haché (SHA-256),
-  rotation à chaque usage, réutilisation détectée → toutes les sessions révoquées
+- Jeton d'accès 15 min (claims `sub` = id utilisateur, `roles`) dans le corps de la réponse ; refresh token 7 jours opaque,
+  envoyé UNIQUEMENT dans un cookie httpOnly, stocké haché (SHA-256), rotation à chaque usage, réutilisation détectée →
+  toutes les sessions révoquées
 - Public : `GET` catalogue, `/api/auth/**`, health, docs ; `/api/admin/**` = ADMIN ; écritures du catalogue = `@PreAuthorize` ADMIN ;
   tout le reste = authentifié
 - Deux émetteurs acceptés (`JwtIssuerAuthenticationManagerResolver`, choix par le claim `iss`) : nos jetons HS256 (rôles

@@ -74,7 +74,7 @@ public class AuthService {
 	// noRollbackFor : le compteur d'échecs et le journal d'audit doivent être enregistrés MÊME quand la
 	// connexion échoue. Sans lui, l'exception annulerait la transaction... et le verrouillage ne marcherait jamais.
 	@Transactional(noRollbackFor = InvalidCredentialsException.class)
-	public TokenResponse login(LoginRequest request, String ipAddress) {
+	public IssuedTokens login(LoginRequest request, String ipAddress) {
 		String email = normalize(request.email());
 		Instant now = Instant.now();
 		User user = userRepository.findByEmail(email).orElse(null);
@@ -95,7 +95,7 @@ public class AuthService {
 	}
 
 	@Transactional(noRollbackFor = InvalidRefreshTokenException.class)
-	public TokenResponse refresh(String rawRefreshToken) {
+	public IssuedTokens refresh(String rawRefreshToken) {
 		Instant now = Instant.now();
 		RefreshToken token = refreshTokenRepository.findByTokenHash(sha256(rawRefreshToken))
 			.orElseThrow(InvalidRefreshTokenException::new);
@@ -121,7 +121,7 @@ public class AuthService {
 		return PageResponse.from(loginEventRepository.findAll(pageable).map(LoginEventResponse::from));
 	}
 
-	private TokenResponse issueTokens(User user, Instant now) {
+	private IssuedTokens issueTokens(User user, Instant now) {
 		JwtClaimsSet claims = JwtClaimsSet.builder()
 			.issuer(properties.jwt().issuer())
 			.issuedAt(now)
@@ -137,7 +137,7 @@ public class AuthService {
 		String refreshToken = randomToken();
 		refreshTokenRepository
 			.save(new RefreshToken(user, sha256(refreshToken), now.plus(properties.jwt().refreshTokenTtl())));
-		return new TokenResponse(accessToken, "Bearer", properties.jwt().accessTokenTtl().toSeconds(), refreshToken);
+		return new IssuedTokens(accessToken, properties.jwt().accessTokenTtl().toSeconds(), refreshToken);
 	}
 
 	private InvalidCredentialsException failure(String email, Long userId, String ipAddress, LoginOutcome outcome) {

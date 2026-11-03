@@ -16,7 +16,11 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 @ConfigurationProperties("boutique.security")
 public record SecurityProperties(@Valid @NotNull Jwt jwt, @Valid @NotNull Login login, @Valid @NotNull RateLimit rateLimit,
-		@NotNull Admin admin, @NotNull Keycloak keycloak) {
+		@NotNull Admin admin, @NotNull Keycloak keycloak, @NotNull RefreshCookie refreshCookie) {
+
+	// secure = true : le cookie ne voyage qu'en HTTPS (désactivé seulement en développement, sur http://localhost)
+	public record RefreshCookie(boolean secure) {
+	}
 
 	public record Jwt(@NotBlank @Size(min = 32, message = "doit contenir au moins 32 caractères (256 bits)") String secret,
 			@NotBlank String issuer, @NotNull Duration accessTokenTtl, @NotNull Duration refreshTokenTtl) {

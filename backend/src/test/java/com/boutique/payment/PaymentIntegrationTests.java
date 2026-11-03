@@ -102,7 +102,7 @@ class PaymentIntegrationTests {
 		pay(awaId).andExpect(status().isOk())
 			.andExpect(jsonPath("$.status").value("PENDING"))
 			.andExpect(jsonPath("$.amount").value(25000))
-			.andExpect(jsonPath("$.checkoutUrl").value(containsString("/api/dev/fake-payments/FAKE-")));
+			.andExpect(jsonPath("$.checkoutUrl").value(containsString("/paiement-simule/FAKE-")));
 		String reference = reference();
 
 		// Le client a payé sur la page du fournisseur… mais tant que le webhook n'est pas arrivé, rien ne change

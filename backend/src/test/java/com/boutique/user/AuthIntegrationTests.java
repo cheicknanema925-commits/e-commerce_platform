@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.jayway.jsonpath.JsonPath;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +29,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import com.boutique.TestcontainersConfiguration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -109,6 +111,11 @@ class AuthIntegrationTests {
 		String body = login("awa@example.com", PASSWORD, nextIp()).andExpect(status().isOk())
 			.andExpect(jsonPath("$.tokenType").value("Bearer"))
 			.andExpect(jsonPath("$.expiresIn").value(900))
+			// Le refresh token n'est JAMAIS dans le JSON : seulement dans un cookie protégé
+			.andExpect(jsonPath("$.refreshToken").doesNotExist())
+			.andExpect(header().string(HttpHeaders.SET_COOKIE, allOf(startsWith(AuthController.REFRESH_COOKIE + "="),
+					containsString("HttpOnly"), containsString("Secure"), containsString("SameSite=Strict"),
+					containsString("Path=/api/auth"))))
 			.andReturn()
 			.getResponse()
 			.getContentAsString();
@@ -193,9 +200,9 @@ class AuthIntegrationTests {
 	@Test
 	void refreshTokenIsRotatedAndReuseRevokesEverything() throws Exception {
 		register("awa@example.com");
-		String firstRefresh = JsonPath.read(login("awa@example.com", PASSWORD, nextIp()).andReturn().getResponse().getContentAsString(), "$.refreshToken");
+		String firstRefresh = refreshCookieOf(login("awa@example.com", PASSWORD, nextIp()));
 
-		String secondRefresh = JsonPath.read(refresh(firstRefresh).andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), "$.refreshToken");
+		String secondRefresh = refreshCookieOf(refresh(firstRefresh).andExpect(status().isOk()));
 		assertThat(secondRefresh).isNotEqualTo(firstRefresh);
 
 		// Le premier jeton revient alors qu'il a déjà servi : vol suspecté → refus, et TOUTES les sessions sont coupées
@@ -206,12 +213,19 @@ class AuthIntegrationTests {
 	@Test
 	void logoutRevokesRefreshToken() throws Exception {
 		register("awa@example.com");
-		String refreshToken = JsonPath.read(login("awa@example.com", PASSWORD, nextIp()).andReturn().getResponse().getContentAsString(), "$.refreshToken");
+		String refreshToken = refreshCookieOf(login("awa@example.com", PASSWORD, nextIp()));
 
-		mockMvc.perform(post("/api/auth/logout").contentType(MediaType.APPLICATION_JSON).content(refreshBody(refreshToken)))
-			.andExpect(status().isNoContent());
+		mockMvc.perform(post("/api/auth/logout").cookie(new Cookie(AuthController.REFRESH_COOKIE, refreshToken)))
+			.andExpect(status().isNoContent())
+			// Max-Age=0 : le navigateur efface le cookie
+			.andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=0")));
 
 		refresh(refreshToken).andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void refreshWithoutCookieIsRefused() throws Exception {
+		mockMvc.perform(post("/api/auth/refresh")).andExpect(status().isUnauthorized());
 	}
 
 	@Test
@@ -285,20 +299,19 @@ class AuthIntegrationTests {
 				""".formatted(email, password)));
 	}
 
+	// Le navigateur renvoie le cookie tout seul ; ici on le joint à la main
 	private ResultActions refresh(String refreshToken) throws Exception {
-		return mockMvc.perform(post("/api/auth/refresh").contentType(MediaType.APPLICATION_JSON).content(refreshBody(refreshToken)));
+		return mockMvc.perform(post("/api/auth/refresh").cookie(new Cookie(AuthController.REFRESH_COOKIE, refreshToken)));
+	}
+
+	private static String refreshCookieOf(ResultActions response) {
+		return response.andReturn().getResponse().getCookie(AuthController.REFRESH_COOKIE).getValue();
 	}
 
 	private static String registerBody(String email) {
 		return """
 				{"email": "%s", "fullName": "Awa Diop", "password": "%s"}
 				""".formatted(email, PASSWORD);
-	}
-
-	private static String refreshBody(String refreshToken) {
-		return """
-				{"refreshToken": "%s"}
-				""".formatted(refreshToken);
 	}
 
 	private static String nextIp() {
