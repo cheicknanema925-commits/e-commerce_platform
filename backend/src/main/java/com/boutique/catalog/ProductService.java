@@ -20,9 +20,9 @@ public class ProductService {
 		this.categoryRepository = categoryRepository;
 	}
 
-	public PageResponse<ProductResponse> findAll(String categorySlug, Pageable pageable) {
-		Page<Product> products = (categorySlug == null) ? productRepository.findAll(pageable)
-				: productRepository.findByCategorySlug(categorySlug, pageable);
+	public PageResponse<ProductResponse> findAll(String categorySlug, String search, Pageable pageable) {
+		Page<Product> products = productRepository.findAll(ProductSpecifications.matching(categorySlug, search),
+				pageable);
 		return PageResponse.from(products.map(ProductResponse::from));
 	}
 

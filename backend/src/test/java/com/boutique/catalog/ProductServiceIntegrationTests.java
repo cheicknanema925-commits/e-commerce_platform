@@ -60,11 +60,23 @@ class ProductServiceIntegrationTests {
 		productService.create(request(modeId, "Pagne wax", "12000"));
 		productService.create(request(categoryId("beaute"), "Beurre de karité", "3000"));
 
-		PageResponse<ProductResponse> page = productService.findAll("mode", PageRequest.of(0, 2, Sort.by("price")));
+		PageResponse<ProductResponse> page = productService.findAll("mode", null, PageRequest.of(0, 2, Sort.by("price")));
 
 		assertThat(page.totalElements()).isEqualTo(3);
 		assertThat(page.totalPages()).isEqualTo(2);
 		assertThat(page.content()).extracting(ProductResponse::name).containsExactly("Sandales cuir", "Pagne wax");
+	}
+
+	@Test
+	void searchIsCaseInsensitiveAndTreatsWildcardsLiterally() {
+		Long modeId = categoryId("mode");
+		productService.create(request(modeId, "Boubou bazin", "25000"));
+		productService.create(request(modeId, "Pagne wax", "12000"));
+
+		assertThat(productService.findAll(null, "BAZIN", PageRequest.of(0, 10)).content()).extracting(ProductResponse::name)
+			.containsExactly("Boubou bazin");
+		// « % » est cherché comme un caractère, pas comme un joker qui renverrait tout le catalogue
+		assertThat(productService.findAll(null, "%", PageRequest.of(0, 10)).content()).isEmpty();
 	}
 
 	private Long categoryId(String slug) {

@@ -3,6 +3,7 @@ package com.boutique.catalog;
 import java.net.URI;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -35,8 +36,9 @@ public class ProductController {
 
 	@GetMapping
 	public PageResponse<ProductResponse> findAll(@RequestParam(required = false) String category,
+			@RequestParam(required = false) @Size(max = 100) String q,
 			@PageableDefault(size = 20, sort = "id") Pageable pageable) {
-		return productService.findAll(category, pageable);
+		return productService.findAll(category, q, pageable);
 	}
 
 	@GetMapping("/{id}")
