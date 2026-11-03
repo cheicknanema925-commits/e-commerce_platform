@@ -1,0 +1,20 @@
+@import 'tailwindcss';
+
+/* Couleurs de la marque, utilisables comme classes Tailwind : bg-brand-700, text-brand-800… */
+@theme {
+  --color-brand-50: #ecfdf5;
+  --color-brand-100: #d1fae5;
+  --color-brand-600: #059669;
+  --color-brand-700: #047857;
+  --color-brand-800: #065f46;
+  --color-brand-900: #064e3b;
+}
+
+body {
+  @apply bg-stone-50 text-stone-900 antialiased;
+}
+
+/* Contour bien visible pour la navigation au clavier (accessibilité) */
+:focus-visible {
+  @apply outline-2 outline-offset-2 outline-brand-700;
+}
