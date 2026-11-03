@@ -42,6 +42,8 @@ java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod  
   contre les redirections ouvertes (?retour=…)
 - Paiement en ligne : redirection vers `checkoutUrl` du fournisseur ; au retour, on attend la confirmation du serveur
   (polling) ; en dev, `/paiement-simule/:référence` imite la page du fournisseur
+- Back-office `/admin` (`pages/admin/`, sous `RequireAuth` + `RequireAdmin`) : tableau de bord, produits (CRUD),
+  commandes (filtre par statut, boutons construits depuis `nextStatuses` renvoyé par l'API, jamais recalculés côté client)
 - CI : job `frontend` (npm ci, lint, test, build)
 
 ## Profils
@@ -104,6 +106,9 @@ java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod  
   auteur affiché « Prénom N. » ; commentaires = texte non fiable (XSS côté frontend, injection de prompt pour l'agent)
 - Événements : appel direct pour ce qui doit être dans la même transaction, `ApplicationEvent` pour les conséquences ;
   `OrderPaidEvent` → `@TransactionalEventListener(AFTER_COMMIT)` dans `notification` (rien n'est envoyé si rollback)
+- Admin : `/api/admin/orders` renvoie `AdminOrderResponse` (client + `nextStatuses` pour l'acteur ADMIN) ; package `admin`
+  = statistiques (`GET /api/admin/stats`) calculées en base (projections d'interface `countByStatus`, `bestSellers`),
+  jamais en chargeant toutes les commandes en mémoire ; un produit déjà commandé ne se supprime pas (clé étrangère → 409)
 
 ## Paiement
 

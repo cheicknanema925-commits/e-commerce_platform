@@ -37,6 +37,11 @@ export function Layout() {
             </NavLink>
             {status === 'authenticated' && (
               <>
+                {user?.role === 'ADMIN' && (
+                  <NavLink to="/admin" className={navLinkClass}>
+                    Administration
+                  </NavLink>
+                )}
                 <NavLink to="/commandes" className={navLinkClass}>
                   Mes commandes
                 </NavLink>

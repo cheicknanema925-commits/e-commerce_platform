@@ -17,6 +17,24 @@ export function orderStatusLabel(status: OrderStatus, paymentMethod: PaymentMeth
   }
 }
 
+// Libellé du bouton de l'admin pour passer au statut suivant
+export function adminActionLabel(target: OrderStatus, paymentMethod: PaymentMethod): string {
+  switch (target) {
+    case 'PREPARING':
+      return paymentMethod === 'CASH_ON_DELIVERY' ? 'Confirmer et préparer' : 'Passer en préparation'
+    case 'SHIPPED':
+      return 'Marquer comme expédiée'
+    case 'DELIVERED':
+      return paymentMethod === 'CASH_ON_DELIVERY' ? 'Livrée, espèces encaissées' : 'Marquer comme livrée'
+    case 'CANCELLED':
+      return 'Annuler la commande'
+    default:
+      return target
+  }
+}
+
+export const ORDER_STATUSES: OrderStatus[] = ['CREATED', 'PAID', 'PREPARING', 'SHIPPED', 'DELIVERED', 'CANCELLED']
+
 export const DELIVERY_STEPS: { status: DeliveryStatus; label: string }[] = [
   { status: 'PENDING', label: 'Commande reçue' },
   { status: 'PREPARING', label: 'En préparation' },

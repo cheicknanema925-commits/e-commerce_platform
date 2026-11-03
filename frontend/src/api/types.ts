@@ -106,6 +106,30 @@ export type PaymentSession = {
   checkoutUrl: string
 }
 
+// Back-office : nextStatuses est calculé par la machine à états du serveur
+export type AdminOrder = Order & {
+  customerName: string
+  customerEmail: string
+  nextStatuses: OrderStatus[]
+}
+
+export type AdminStats = {
+  collectedRevenue: number
+  orderCount: number
+  customerCount: number
+  ordersByStatus: { status: OrderStatus; count: number }[]
+  bestSellers: { productId: number; name: string; quantity: number }[]
+  lowStock: { productId: number; name: string; stock: number }[]
+}
+
+export type ProductInput = {
+  categoryId: number
+  name: string
+  description: string | null
+  price: number
+  stock: number
+}
+
 // Format d'erreur standard de l'API (RFC 9457), produit par GlobalExceptionHandler
 export type ProblemDetail = {
   title?: string
