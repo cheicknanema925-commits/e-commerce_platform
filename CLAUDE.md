@@ -9,7 +9,8 @@ sans dépendance circulaire entre packages (ex. review dépend de catalog et ord
 ## Structure du dépôt
 
 - `backend/` : API Spring Boot (package racine `com.boutique`), build avec le Maven Wrapper (`./mvnw`)
-- `frontend/` : React + TypeScript + Vite + Tailwind (à partir de l'étape 7)
+- `frontend/` : React 19 + TypeScript 7 + Vite 8 + Tailwind 4, React Router 8, TanStack Query 5, oxlint, Vitest
+  (Node 24 installé dans `~/.local/opt/node` : `export PATH=$HOME/.local/opt/node/bin:$PATH`)
 - `.env.example` : modèle des variables d'environnement ; le vrai `.env` n'est jamais commité
 
 ## Commandes utiles
@@ -25,6 +26,16 @@ cd backend
 ./mvnw verify               # build complet + tests
 java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod   # comme en production
 ```
+
+## Frontend
+
+- `cd frontend && npm run dev` (http://localhost:5173) ; proxy Vite `/api` → `http://localhost:8080` : une seule origine,
+  donc pas de CORS à ouvrir dans l'API (en production, Caddy fera le même relais)
+- Code : guillemets simples, sans point-virgule, imports `import type` (verbatimModuleSyntax), pas d'enum TypeScript
+- Couches : `api/` (fetch + `ApiError` lisant les ProblemDetail), `hooks/` (TanStack Query), `components/`, `pages/`
+- Filtres du catalogue dans l'URL (`useSearchParams`) ; accessibilité : labels, `role="alert"`, `aria-live`, focus visible
+- Textes venant des clients (avis) affichés comme texte React, jamais en HTML (pas de `dangerouslySetInnerHTML`)
+- CI : job `frontend` (npm ci, lint, test, build)
 
 ## Profils
 
