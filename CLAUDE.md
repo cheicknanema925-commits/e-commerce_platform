@@ -86,6 +86,19 @@ java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod  
 - Événements : appel direct pour ce qui doit être dans la même transaction, `ApplicationEvent` pour les conséquences ;
   `OrderPaidEvent` → `@TransactionalEventListener(AFTER_COMMIT)` dans `notification` (rien n'est envoyé si rollback)
 
+## Paiement
+
+- `PaymentProvider` (pattern Stratégie : initier, vérifier, traiter un webhook) ; `boutique.payment.provider` =
+  `fake` (dev/tests, refusé avec le profil prod) ou `paydunya` (clés `PAYDUNYA_*` dans `.env`, mode test = bac à sable)
+- PayDunya écrit UNIQUEMENT d'après https://developers.paydunya.com/doc/FR/http_json : create invoice, confirm/{token},
+  IPN en form-urlencoded (`data[hash]` = SHA-512 de la MasterKey, `data[invoice][token]`) ; tests avec MockRestServiceServer
+- Statut « payé » : uniquement via webhook vérifié PUIS reconfirmé auprès de l'API du fournisseur, montant comparé à la
+  commande ; jamais depuis la page de retour ; webhook idempotent ; réconciliation planifiée (`PaymentReconciliationJob`)
+- Aucun appel réseau pendant une transaction ouverte (`PaymentService.initiate` utilise `TransactionTemplate`)
+- Journal `payment_events` pour chaque étape ; espèces à la livraison (`CASH_ON_DELIVERY`) : préparée sans paiement,
+  paiement « cash » enregistré à DELIVERED (événement `OrderDeliveredEvent` écouté de façon synchrone), refus à la porte
+- Dev : `POST /api/dev/fake-payments/{référence}/paye|annule` simule la page de paiement et le webhook signé
+
 ## Erreurs
 
 - `common/GlobalExceptionHandler` (`@RestControllerAdvice`) : toutes les erreurs au format `ProblemDetail` (RFC 9457)

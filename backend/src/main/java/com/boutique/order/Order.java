@@ -41,6 +41,9 @@ public class Order {
 	@Enumerated(EnumType.STRING)
 	private OrderStatus status;
 
+	@Enumerated(EnumType.STRING)
+	private PaymentMethod paymentMethod;
+
 	private BigDecimal totalAmount;
 
 	// Verrouillage optimiste : empêche par exemple « annulée » et « payée » d'être enregistrées en même temps
@@ -60,7 +63,12 @@ public class Order {
 	}
 
 	public Order(User user) {
+		this(user, PaymentMethod.ONLINE);
+	}
+
+	public Order(User user, PaymentMethod paymentMethod) {
 		this.user = user;
+		this.paymentMethod = paymentMethod;
 		this.status = OrderStatus.CREATED;
 		this.totalAmount = BigDecimal.ZERO;
 	}
@@ -73,7 +81,7 @@ public class Order {
 
 	// Seul point d'entrée pour changer de statut : toute transition non prévue par la machine à états est refusée
 	public void changeStatus(OrderStatus target, OrderActor actor) {
-		if (!status.canTransitionTo(target, actor)) {
+		if (!status.canTransitionTo(target, actor, paymentMethod)) {
 			throw new InvalidOrderTransitionException(status, target);
 		}
 		status = target;
@@ -93,6 +101,10 @@ public class Order {
 
 	public OrderStatus getStatus() {
 		return status;
+	}
+
+	public PaymentMethod getPaymentMethod() {
+		return paymentMethod;
 	}
 
 	public BigDecimal getTotalAmount() {
