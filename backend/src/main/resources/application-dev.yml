@@ -8,6 +8,13 @@ spring:
       include-message: always
       include-binding-errors: always
 
+# Swagger UI : http://localhost:8080/swagger-ui.html
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
 logging:
   level:
     # Affiche chaque requête SQL envoyée par Hibernate (utile pour repérer le problème N+1)
