@@ -38,6 +38,10 @@ public class CartItem {
 		this.quantity = quantity;
 	}
 
+	void changeQuantity(int quantity) {
+		this.quantity = quantity;
+	}
+
 	public Long getId() {
 		return id;
 	}

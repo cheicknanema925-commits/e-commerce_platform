@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -34,6 +35,10 @@ public class Product {
 	private BigDecimal price;
 
 	private int stock;
+
+	// Verrouillage optimiste : Hibernate vérifie et incrémente ce numéro à chaque UPDATE
+	@Version
+	private long version;
 
 	@CreationTimestamp
 	private Instant createdAt;
@@ -61,6 +66,11 @@ public class Product {
 			throw new InsufficientStockException(id, stock, quantity);
 		}
 		stock -= quantity;
+	}
+
+	// Remise en stock (commande annulée)
+	public void addStock(int quantity) {
+		stock += quantity;
 	}
 
 	public Long getId() {

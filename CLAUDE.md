@@ -66,6 +66,19 @@ java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod  
   clé de test dans `src/test/resources/config/application.yml` (chargée uniquement pendant les tests)
 - Spring Security 7 : `WWW-Authenticate` contient aussi `resource_metadata` (RFC 9728)
 
+## Panier et commandes
+
+- Logique métier dans les entités et services (`Cart.addItem`, `Order.changeStatus`), jamais dans les contrôleurs
+- Machine à états : tableau `OrderStatus.TRANSITIONS` (statut → statuts suivants → acteurs autorisés : CUSTOMER, ADMIN,
+  PAYMENT_PROVIDER) ; `PAID` uniquement par le paiement (`OrderService.markPaid`, appelé par le webhook à l'étape 6)
+- Prix TOUJOURS relu en base (aucun prix dans les requêtes), figé dans `OrderItem` à la commande ; stock réservé à la
+  commande, rendu à l'annulation ; panier : max 99 par produit, stock vérifié à l'ajout ET à la commande
+- `@Version` sur `Product` et `Order` (verrouillage optimiste) → `OptimisticLockingFailureException` → 409
+  (`ConcurrentPurchaseIntegrationTests` : deux clients, un seul dernier article)
+- Id dans l'URL (`/api/orders/{id}`) : `findByIdAndUserId` → 404 si la commande appartient à un autre (IDOR)
+- Liste paginée avec relations : page d'abord, puis `fetchItems(ids)` (jamais de JOIN FETCH paginé sur une collection)
+- Tests : `jwt().jwt(t -> t.issuer("boutique-api").subject(id))` simule un utilisateur local
+
 ## Erreurs
 
 - `common/GlobalExceptionHandler` (`@RestControllerAdvice`) : toutes les erreurs au format `ProblemDetail` (RFC 9457)

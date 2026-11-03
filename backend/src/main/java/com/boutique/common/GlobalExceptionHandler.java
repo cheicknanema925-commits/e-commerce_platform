@@ -6,6 +6,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -58,6 +59,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		log.warn("Contrainte d'intégrité violée : {}", ex.getMostSpecificCause().getMessage());
 		return problem(HttpStatus.CONFLICT, "Conflit",
 				"Opération impossible : cette ressource est liée à d'autres données.");
+	}
+
+	// Verrouillage optimiste : quelqu'un a modifié la même donnée au même moment (ex. le dernier article acheté
+	// par deux clients) ; le client peut simplement réessayer avec des données à jour
+	@ExceptionHandler(OptimisticLockingFailureException.class)
+	ProblemDetail handleOptimisticLocking(OptimisticLockingFailureException ex) {
+		return problem(HttpStatus.CONFLICT, "Conflit",
+				"Ces données viennent d'être modifiées par une autre opération. Réessayez.");
 	}
 
 	// Tri ou filtre sur un champ qui n'existe pas (ex. ?sort=motdepasse)

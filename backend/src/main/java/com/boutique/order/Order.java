@@ -18,6 +18,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -42,6 +43,10 @@ public class Order {
 
 	private BigDecimal totalAmount;
 
+	// Verrouillage optimiste : empêche par exemple « annulée » et « payée » d'être enregistrées en même temps
+	@Version
+	private long version;
+
 	@OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<OrderItem> items = new ArrayList<>();
 
@@ -64,6 +69,18 @@ public class Order {
 		OrderItem item = new OrderItem(this, product, quantity);
 		items.add(item);
 		totalAmount = totalAmount.add(item.getSubtotal());
+	}
+
+	// Seul point d'entrée pour changer de statut : toute transition non prévue par la machine à états est refusée
+	public void changeStatus(OrderStatus target, OrderActor actor) {
+		if (!status.canTransitionTo(target, actor)) {
+			throw new InvalidOrderTransitionException(status, target);
+		}
+		status = target;
+	}
+
+	public boolean belongsTo(Long userId) {
+		return user.getId().equals(userId);
 	}
 
 	public Long getId() {
