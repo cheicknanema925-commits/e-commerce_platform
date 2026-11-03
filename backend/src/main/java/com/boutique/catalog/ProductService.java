@@ -1,60 +1,62 @@
 package com.boutique.catalog;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.boutique.common.PageResponse;
 
 @Service
+@Transactional(readOnly = true)
 public class ProductService {
 
-	private final Map<Long, Product> products = new ConcurrentHashMap<>();
+	private final ProductRepository productRepository;
 
-	private final AtomicLong nextId = new AtomicLong();
+	private final CategoryRepository categoryRepository;
 
-	public List<ProductResponse> findAll() {
-		return products.values()
-			.stream()
-			.sorted(Comparator.comparing(Product::id))
-			.map(ProductResponse::from)
-			.toList();
+	public ProductService(ProductRepository productRepository, CategoryRepository categoryRepository) {
+		this.productRepository = productRepository;
+		this.categoryRepository = categoryRepository;
+	}
+
+	public PageResponse<ProductResponse> findAll(String categorySlug, Pageable pageable) {
+		Page<Product> products = (categorySlug == null) ? productRepository.findAll(pageable)
+				: productRepository.findByCategorySlug(categorySlug, pageable);
+		return PageResponse.from(products.map(ProductResponse::from));
 	}
 
 	public ProductResponse findById(Long id) {
-		Product product = products.get(id);
-		if (product == null) {
-			throw new ProductNotFoundException(id);
-		}
-		return ProductResponse.from(product);
+		return ProductResponse.from(getProduct(id));
 	}
 
+	@Transactional
 	public ProductResponse create(ProductRequest request) {
-		long id = nextId.incrementAndGet();
-		Product product = toProduct(id, request);
-		products.put(id, product);
+		Product product = new Product(getCategory(request.categoryId()), request.name(), request.description(),
+				request.price(), request.stock());
+		return ProductResponse.from(productRepository.save(product));
+	}
+
+	@Transactional
+	public ProductResponse update(Long id, ProductRequest request) {
+		Product product = getProduct(id);
+		product.update(getCategory(request.categoryId()), request.name(), request.description(), request.price(),
+				request.stock());
+		// Pas de save() : le produit est suivi par le contexte de persistance, l'UPDATE part au commit
 		return ProductResponse.from(product);
 	}
 
-	public ProductResponse update(Long id, ProductRequest request) {
-		// computeIfPresent : lecture + remplacement en une seule opération, sans qu'un autre thread s'intercale
-		Product updated = products.computeIfPresent(id, (key, existing) -> toProduct(key, request));
-		if (updated == null) {
-			throw new ProductNotFoundException(id);
-		}
-		return ProductResponse.from(updated);
-	}
-
+	@Transactional
 	public void delete(Long id) {
-		if (products.remove(id) == null) {
-			throw new ProductNotFoundException(id);
-		}
+		productRepository.delete(getProduct(id));
 	}
 
-	private static Product toProduct(Long id, ProductRequest request) {
-		return new Product(id, request.name(), request.description(), request.price(), request.stock());
+	private Product getProduct(Long id) {
+		return productRepository.findById(id).orElseThrow(() -> new ProductNotFoundException(id));
+	}
+
+	private Category getCategory(Long id) {
+		return categoryRepository.findById(id).orElseThrow(() -> new CategoryNotFoundException(id));
 	}
 
 }

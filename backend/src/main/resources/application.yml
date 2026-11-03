@@ -1,6 +1,22 @@
 spring:
   application:
     name: boutique-api
+  datasource:
+    # Valeurs lues dans les variables d'environnement (ou le .env en profil dev), jamais écrites ici
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${POSTGRES_DB}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+  jpa:
+    hibernate:
+      # Flyway crée le schéma ; Hibernate vérifie seulement que les entités lui correspondent
+      ddl-auto: validate
+    # Aucune requête SQL après la fin du service : les DTO sont construits dans la transaction
+    open-in-view: false
+  data:
+    web:
+      pageable:
+        # Un client ne peut pas demander 1 million de produits d'un coup
+        max-page-size: 100
   web:
     error:
       # Jamais de stack trace dans les réponses HTTP, quel que soit le profil
