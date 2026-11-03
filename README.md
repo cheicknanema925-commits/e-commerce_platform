@@ -10,9 +10,11 @@ Java 21 · Spring Boot 4.1 · Maven · PostgreSQL · Flyway · Spring Security /
 
 ## Lancer le projet en local
 
-Prérequis : JDK 21.
+Prérequis : JDK 21 et Docker.
 
 ```bash
+cp .env.example .env          # puis choisir un mot de passe dans .env
+docker compose up -d          # PostgreSQL
 cd backend
 ./mvnw spring-boot:run
 ```
