@@ -14,6 +14,10 @@ Architecture : monolithe modulaire, un package par domaine (catalog, cart, order
 ## Commandes utiles
 
 ```bash
+cp .env.example .env        # une seule fois, puis mettre un vrai mot de passe
+docker compose up -d        # démarrer PostgreSQL (port 5432, uniquement en local)
+docker compose down         # l'arrêter (les données restent dans le volume postgres-data)
+
 cd backend
 ./mvnw spring-boot:run      # démarrer l'API sur http://localhost:8080 (profil dev activé par le pom.xml)
 ./mvnw test                 # lancer les tests
@@ -24,9 +28,18 @@ java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod  
 ## Profils
 
 - `application.yml` : configuration commune, sûre par défaut (jamais de stack trace dans les réponses)
-- `application-dev.yml` : messages d'erreur détaillés pour déboguer
+- `application-dev.yml` : lit `../.env`, messages d'erreur détaillés, requêtes SQL dans les logs
 - `application-prod.yml` : logs JSON (format ECS)
 - Spring Boot 4 : les propriétés d'erreur sont `spring.web.error.*` (`server.error.*` est déprécié)
+
+## Base de données
+
+- Schéma géré uniquement par Flyway : `backend/src/main/resources/db/migration/V<n>__<description>.sql`
+- Ne jamais modifier une migration déjà appliquée : toute évolution = nouvelle migration
+- Hibernate en `ddl-auto: validate`, `open-in-view: false`, relations `@ManyToOne`/`@OneToOne` en `LAZY`
+- Listes avec relations : `JOIN FETCH` ou `@EntityGraph` pour éviter le N+1 (vérifié par `OrderServiceIntegrationTests` avec les statistiques Hibernate)
+- Écritures dans des méthodes `@Transactional` : rollback automatique sur `RuntimeException`
+- Tests d'intégration : Testcontainers (`TestcontainersConfiguration`), même image que docker-compose
 
 ## Règles pour toi
 

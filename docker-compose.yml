@@ -1,0 +1,25 @@
+# Services de développement : docker compose up -d
+# Les identifiants viennent du fichier .env (copié depuis .env.example, jamais commité)
+services:
+  postgres:
+    # PostgreSQL 18 + extension pgvector (recherche sémantique de l'agent IA, étape 8)
+    image: pgvector/pgvector:0.8.7-pg18
+    container_name: boutique-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      # 127.0.0.1 : la base n'est joignable que depuis ta machine, pas depuis le réseau
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
+    volumes:
+      # Volume nommé : les données survivent à l'arrêt et à la suppression du conteneur
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres-data:

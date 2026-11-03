@@ -1,6 +1,14 @@
 spring:
+  config:
+    # Lit les identifiants de la base dans le .env à la racine du dépôt (le même que docker compose)
+    import: optional:file:../.env[.properties]
   web:
     error:
       # En développement : message et champs invalides visibles pour déboguer avec curl
       include-message: always
       include-binding-errors: always
+
+logging:
+  level:
+    # Affiche chaque requête SQL envoyée par Hibernate (utile pour repérer le problème N+1)
+    org.hibernate.SQL: debug

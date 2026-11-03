@@ -1,10 +1,11 @@
 package com.boutique.catalog;
 
 import java.net.URI;
-import java.util.List;
 
 import jakarta.validation.Valid;
 
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -14,9 +15,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import com.boutique.common.PageResponse;
 
 @RestController
 @RequestMapping("/api/products")
@@ -29,8 +33,9 @@ public class ProductController {
 	}
 
 	@GetMapping
-	public List<ProductResponse> findAll() {
-		return productService.findAll();
+	public PageResponse<ProductResponse> findAll(@RequestParam(required = false) String category,
+			@PageableDefault(size = 20, sort = "id") Pageable pageable) {
+		return productService.findAll(category, pageable);
 	}
 
 	@GetMapping("/{id}")
