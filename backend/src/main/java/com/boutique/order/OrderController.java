@@ -3,12 +3,15 @@ package com.boutique.order;
 import java.net.URI;
 import java.util.List;
 
+import jakarta.validation.Valid;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -28,10 +31,11 @@ public class OrderController {
 		this.currentUserResolver = currentUserResolver;
 	}
 
-	// Passer commande avec le contenu du panier : aucun prix ni montant n'est lu dans la requête
+	// Passer commande avec le contenu du panier : seule l'adresse de livraison est lue, aucun prix ni montant
 	@PostMapping
-	public ResponseEntity<OrderResponse> checkout(@AuthenticationPrincipal Jwt jwt) {
-		OrderResponse order = orderService.checkout(currentUserResolver.userId(jwt));
+	public ResponseEntity<OrderResponse> checkout(@AuthenticationPrincipal Jwt jwt,
+			@Valid @RequestBody CheckoutRequest request) {
+		OrderResponse order = orderService.checkout(currentUserResolver.userId(jwt), request);
 		URI location = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(order.id()).toUri();
 		return ResponseEntity.created(location).body(order);
 	}
@@ -46,6 +50,12 @@ public class OrderController {
 	@GetMapping("/{id}")
 	public OrderResponse findById(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id) {
 		return orderService.findOrderOfUser(currentUserResolver.userId(jwt), id);
+	}
+
+	// Suivi de livraison (même contrôle de propriétaire que la commande)
+	@GetMapping("/{id}/delivery")
+	public DeliveryResponse delivery(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id) {
+		return orderService.findDeliveryOfUser(currentUserResolver.userId(jwt), id);
 	}
 
 	@PostMapping("/{id}/cancel")

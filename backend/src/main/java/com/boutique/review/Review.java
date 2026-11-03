@@ -1,4 +1,4 @@
-package com.boutique.catalog;
+package com.boutique.review;
 
 import java.time.Instant;
 
@@ -13,6 +13,7 @@ import jakarta.persistence.Table;
 
 import org.hibernate.annotations.CreationTimestamp;
 
+import com.boutique.catalog.Product;
 import com.boutique.user.User;
 
 @Entity

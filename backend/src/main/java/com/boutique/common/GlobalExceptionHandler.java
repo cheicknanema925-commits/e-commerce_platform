@@ -47,6 +47,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return problem(HttpStatus.UNAUTHORIZED, "Non authentifié", ex.getMessage());
 	}
 
+	@ExceptionHandler(ForbiddenException.class)
+	ProblemDetail handleForbidden(ForbiddenException ex) {
+		return problem(HttpStatus.FORBIDDEN, "Action interdite", ex.getMessage());
+	}
+
 	// @PreAuthorize refusé dans un contrôleur : sans ce gestionnaire, le filet Exception ci-dessous renverrait 500
 	@ExceptionHandler(AccessDeniedException.class)
 	ProblemDetail handleAccessDenied(AccessDeniedException ex) {

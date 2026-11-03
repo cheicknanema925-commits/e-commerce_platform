@@ -28,6 +28,7 @@ import com.boutique.user.User;
 import com.boutique.user.UserRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -41,6 +42,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 class CheckoutIntegrationTests {
+
+	// Adresse à Dakar avec un point GPS (facultatif) pour aider le livreur
+	private static final String DELIVERY = """
+			{"delivery": {"addressLine": "Rue 10, Sicap Liberté 6", "city": "Dakar", "phone": "+221 77 123 45 67",
+			 "latitude": 14.7167, "longitude": -17.4677}}
+			""";
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -59,6 +66,9 @@ class CheckoutIntegrationTests {
 
 	@Autowired
 	private OrderRepository orderRepository;
+
+	@Autowired
+	private DeliveryRepository deliveryRepository;
 
 	@Autowired
 	private OrderService orderService;
@@ -82,6 +92,7 @@ class CheckoutIntegrationTests {
 
 	@AfterEach
 	void cleanUp() {
+		deliveryRepository.deleteAll();
 		orderRepository.deleteAll();
 		cartRepository.deleteAll();
 		productRepository.deleteAll();
@@ -95,7 +106,7 @@ class CheckoutIntegrationTests {
 				{"productId": %d, "quantity": 2, "price": 1}
 				""".formatted(boubouId)).andExpect(status().isOk()).andExpect(jsonPath("$.total").value(50000));
 
-		mockMvc.perform(post("/api/orders").with(customer(awaId)))
+		mockMvc.perform(post("/api/orders").with(customer(awaId)).contentType(MediaType.APPLICATION_JSON).content(DELIVERY))
 			.andExpect(status().isCreated())
 			.andExpect(header().exists("Location"))
 			.andExpect(jsonPath("$.status").value("CREATED"))
@@ -115,7 +126,7 @@ class CheckoutIntegrationTests {
 
 	@Test
 	void checkoutWithEmptyCartIsRefused() throws Exception {
-		mockMvc.perform(post("/api/orders").with(customer(awaId)))
+		mockMvc.perform(post("/api/orders").with(customer(awaId)).contentType(MediaType.APPLICATION_JSON).content(DELIVERY))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.detail").value("Le panier est vide."));
 	}
@@ -128,7 +139,7 @@ class CheckoutIntegrationTests {
 				""".formatted(boubouId)).andExpect(status().isOk());
 		transactionTemplate.executeWithoutResult((status) -> productRepository.findById(boubouId).orElseThrow().removeStock(7));
 
-		mockMvc.perform(post("/api/orders").with(customer(awaId))).andExpect(status().isConflict());
+		mockMvc.perform(post("/api/orders").with(customer(awaId)).contentType(MediaType.APPLICATION_JSON).content(DELIVERY)).andExpect(status().isConflict());
 
 		assertThat(orderRepository.count()).isZero();
 		assertThat(stockOf(boubouId)).isEqualTo(3);
@@ -196,11 +207,51 @@ class CheckoutIntegrationTests {
 			.content("{\"status\": \"DELIVERED\"}")).andExpect(status().isForbidden());
 	}
 
+	@Test
+	void deliveryIsTrackedThroughTheOrderLifecycle() throws Exception {
+		Long orderId = placeOrder(awaId);
+		mockMvc.perform(get("/api/orders/{id}/delivery", orderId).with(customer(awaId)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("PENDING"))
+			.andExpect(jsonPath("$.city").value("Dakar"))
+			.andExpect(jsonPath("$.latitude").value(14.7167));
+
+		orderService.markPaid(orderId);
+		changeStatus(orderId, "PREPARING").andExpect(status().isOk());
+		changeStatus(orderId, "SHIPPED").andExpect(status().isOk());
+		mockMvc.perform(get("/api/orders/{id}/delivery", orderId).with(customer(awaId)))
+			.andExpect(jsonPath("$.status").value("SHIPPED"))
+			.andExpect(jsonPath("$.shippedAt").isNotEmpty())
+			.andExpect(jsonPath("$.deliveredAt").isEmpty());
+
+		changeStatus(orderId, "DELIVERED").andExpect(status().isOk());
+		mockMvc.perform(get("/api/orders/{id}/delivery", orderId).with(customer(awaId)))
+			.andExpect(jsonPath("$.status").value("DELIVERED"))
+			.andExpect(jsonPath("$.deliveredAt").isNotEmpty());
+
+		// La livraison d'Awa (adresse, téléphone) est invisible pour Moussa
+		mockMvc.perform(get("/api/orders/{id}/delivery", orderId).with(customer(moussaId))).andExpect(status().isNotFound());
+	}
+
+	@Test
+	void invalidDeliveryAddressIsRefused() throws Exception {
+		addToCart(awaId, """
+				{"productId": %d, "quantity": 1}
+				""".formatted(boubouId)).andExpect(status().isOk());
+
+		mockMvc.perform(post("/api/orders").with(customer(awaId)).contentType(MediaType.APPLICATION_JSON).content("""
+				{"delivery": {"addressLine": "Rue 10", "city": "Dakar", "phone": "pas un numéro", "latitude": 120}}
+				"""))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.errors[*].field").value(containsInAnyOrder("delivery.phone", "delivery.latitude")));
+		assertThat(orderRepository.count()).isZero();
+	}
+
 	private Long placeOrder(Long userId) throws Exception {
 		addToCart(userId, """
 				{"productId": %d, "quantity": 1}
 				""".formatted(boubouId)).andExpect(status().isOk());
-		String body = mockMvc.perform(post("/api/orders").with(customer(userId)))
+		String body = mockMvc.perform(post("/api/orders").with(customer(userId)).contentType(MediaType.APPLICATION_JSON).content(DELIVERY))
 			.andExpect(status().isCreated())
 			.andReturn()
 			.getResponse()
