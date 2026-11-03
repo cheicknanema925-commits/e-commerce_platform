@@ -1,5 +1,6 @@
 package com.boutique.user;
 
+import java.time.Duration;
 import java.time.Instant;
 
 import jakarta.persistence.Entity;
@@ -27,6 +28,12 @@ public class User {
 	@Enumerated(EnumType.STRING)
 	private Role role;
 
+	private String passwordHash;
+
+	private int failedLoginAttempts;
+
+	private Instant lockedUntil;
+
 	@CreationTimestamp
 	private Instant createdAt;
 
@@ -34,9 +41,32 @@ public class User {
 	}
 
 	public User(String email, String fullName, Role role) {
+		this(email, fullName, role, null);
+	}
+
+	public User(String email, String fullName, Role role, String passwordHash) {
 		this.email = email;
 		this.fullName = fullName;
 		this.role = role;
+		this.passwordHash = passwordHash;
+	}
+
+	public boolean isLocked(Instant now) {
+		return lockedUntil != null && now.isBefore(lockedUntil);
+	}
+
+	// Après maxAttempts échecs consécutifs, le compte est verrouillé pendant lockDuration
+	public void registerFailedLogin(int maxAttempts, Duration lockDuration, Instant now) {
+		failedLoginAttempts++;
+		if (failedLoginAttempts >= maxAttempts) {
+			lockedUntil = now.plus(lockDuration);
+			failedLoginAttempts = 0;
+		}
+	}
+
+	public void registerSuccessfulLogin() {
+		failedLoginAttempts = 0;
+		lockedUntil = null;
 	}
 
 	public Long getId() {
@@ -53,6 +83,18 @@ public class User {
 
 	public Role getRole() {
 		return role;
+	}
+
+	public String getPasswordHash() {
+		return passwordHash;
+	}
+
+	public int getFailedLoginAttempts() {
+		return failedLoginAttempts;
+	}
+
+	public Instant getLockedUntil() {
+		return lockedUntil;
 	}
 
 	public Instant getCreatedAt() {

@@ -42,6 +42,22 @@ java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod  
 - CI : `.github/workflows/ci.yml` lance `./mvnw -B verify` sur chaque pull request et sur main
 - Swagger (springdoc 3.x) : désactivé par défaut, activé en dev → `/swagger-ui.html`
 
+## Sécurité
+
+- `security/SecurityConfig` : API sans état, JWT HS256 vérifiés par le resource server de Spring Security
+- Jeton d'accès 15 min (claims `sub` = id utilisateur, `roles`), refresh token 7 jours opaque, stocké haché (SHA-256),
+  rotation à chaque usage, réutilisation détectée → toutes les sessions révoquées
+- Public : `GET` catalogue, `/api/auth/**`, health, docs ; `/api/admin/**` = ADMIN ; écritures du catalogue = `@PreAuthorize` ADMIN ;
+  tout le reste = authentifié
+- Identité TOUJOURS lue dans le jeton (`CurrentUser.id(jwt)`), jamais dans l'URL ou le corps (protection IDOR)
+- Connexion : verrouillage après 5 échecs (15 min), 10 tentatives/min par IP (`LoginRateLimitFilter`, en mémoire),
+  audit dans `login_events`, même message d'erreur quel que soit le cas
+- BCrypt refuse plus de 72 octets : vérifié avant chaque appel au `PasswordEncoder`
+- `.env` : `JWT_SECRET` (32 caractères min, sinon l'appli refuse de démarrer), `ADMIN_EMAIL`, `ADMIN_PASSWORD` (premier admin)
+- Tests : `jwt()` (spring-security-test) pour les tests de tranche, vrais jetons via `/api/auth/login` pour l'intégration ;
+  clé de test dans `src/test/resources/config/application.yml` (chargée uniquement pendant les tests)
+- Spring Security 7 : `WWW-Authenticate` contient aussi `resource_metadata` (RFC 9728)
+
 ## Erreurs
 
 - `common/GlobalExceptionHandler` (`@RestControllerAdvice`) : toutes les erreurs au format `ProblemDetail` (RFC 9457)

@@ -30,6 +30,19 @@ curl http://localhost:8080/actuator/health
 
 Documentation interactive de l'API (profil dev) : http://localhost:8080/swagger-ui.html
 
+## Authentification
+
+JWT (15 min) + refresh token révocable (7 jours). Le premier administrateur est créé au démarrage à partir de
+`ADMIN_EMAIL` / `ADMIN_PASSWORD` dans `.env`.
+
+```bash
+curl -X POST localhost:8080/api/auth/register -H "Content-Type: application/json" \
+  -d '{"email":"awa@example.com","fullName":"Awa Diop","password":"MotDePasse-Solide-2026"}'
+curl -X POST localhost:8080/api/auth/login -H "Content-Type: application/json" \
+  -d '{"email":"awa@example.com","password":"MotDePasse-Solide-2026"}'
+curl localhost:8080/api/users/me -H "Authorization: Bearer <accessToken>"
+```
+
 ## Tests
 
 ```bash
