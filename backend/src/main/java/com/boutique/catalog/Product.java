@@ -56,6 +56,13 @@ public class Product {
 		this.stock = stock;
 	}
 
+	public void removeStock(int quantity) {
+		if (quantity > stock) {
+			throw new InsufficientStockException(id, stock, quantity);
+		}
+		stock -= quantity;
+	}
+
 	public Long getId() {
 		return id;
 	}

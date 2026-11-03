@@ -37,6 +37,8 @@ java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod  
 - Schéma géré uniquement par Flyway : `backend/src/main/resources/db/migration/V<n>__<description>.sql`
 - Ne jamais modifier une migration déjà appliquée : toute évolution = nouvelle migration
 - Hibernate en `ddl-auto: validate`, `open-in-view: false`, relations `@ManyToOne`/`@OneToOne` en `LAZY`
+- Listes avec relations : `JOIN FETCH` ou `@EntityGraph` pour éviter le N+1 (vérifié par `OrderServiceIntegrationTests` avec les statistiques Hibernate)
+- Écritures dans des méthodes `@Transactional` : rollback automatique sur `RuntimeException`
 - Tests d'intégration : Testcontainers (`TestcontainersConfiguration`), même image que docker-compose
 
 ## Règles pour toi
