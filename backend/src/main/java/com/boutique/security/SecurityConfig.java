@@ -59,7 +59,7 @@ public class SecurityConfig {
 				.accessDeniedHandler(problemHandler))
 			.exceptionHandling((exceptions) -> exceptions.authenticationEntryPoint(problemHandler)
 				.accessDeniedHandler(problemHandler))
-			.addFilterBefore(new LoginRateLimitFilter(properties.login().maxAttemptsPerMinute(), problemHandler),
+			.addFilterBefore(new AuthRateLimitFilter(properties.rateLimit().requestsPerMinute(), problemHandler),
 					BearerTokenAuthenticationFilter.class);
 		return http.build();
 	}

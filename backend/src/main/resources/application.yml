@@ -34,7 +34,9 @@ boutique:
     login:
       max-failed-attempts: 5
       lock-duration: 15m
-      max-attempts-per-minute: 10
+    rate-limit:
+      # Par minute et par adresse IP, sur /api/auth/login et /api/auth/register
+      requests-per-minute: 10
     admin:
       # Premier compte ADMIN créé au démarrage s'il n'existe pas (vide = aucun compte créé)
       email: ${ADMIN_EMAIL:}

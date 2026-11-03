@@ -28,6 +28,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import com.boutique.TestcontainersConfiguration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -71,7 +72,7 @@ class AuthIntegrationTests {
 
 	@Test
 	void registerAlwaysCreatesCustomerEvenIfAdminRoleIsSent() throws Exception {
-		mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content("""
+		mockMvc.perform(post("/api/auth/register").with(fromIp(nextIp())).contentType(MediaType.APPLICATION_JSON).content("""
 				{"email": "Awa@Example.com", "fullName": "Awa Diop", "password": "%s", "role": "ADMIN"}
 				""".formatted(PASSWORD)))
 			.andExpect(status().isCreated())
@@ -86,7 +87,7 @@ class AuthIntegrationTests {
 	void registerRejectsDuplicateEmail() throws Exception {
 		register("awa@example.com");
 
-		mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(registerBody("awa@example.com")))
+		mockMvc.perform(post("/api/auth/register").with(fromIp(nextIp())).contentType(MediaType.APPLICATION_JSON).content(registerBody("awa@example.com")))
 			.andExpect(status().isConflict());
 	}
 
@@ -95,7 +96,7 @@ class AuthIntegrationTests {
 		// 50 « é » = 50 caractères (accepté par @Size) mais 100 octets en UTF-8 : refusé proprement, pas d'erreur 500
 		String password = "é".repeat(50);
 
-		mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content("""
+		mockMvc.perform(post("/api/auth/register").with(fromIp(nextIp())).contentType(MediaType.APPLICATION_JSON).content("""
 				{"email": "awa@example.com", "fullName": "Awa Diop", "password": "%s"}
 				""".formatted(password)))
 			.andExpect(status().isBadRequest())
@@ -228,8 +229,49 @@ class AuthIntegrationTests {
 		login("inconnu@example.com", PASSWORD, nextIp()).andExpect(status().isUnauthorized());
 	}
 
+	// Audit OWASP : un jeton « alg: none » (sans signature) ne doit jamais être accepté
+	@Test
+	void unsignedAlgNoneTokenIsRejected() throws Exception {
+		Base64.Encoder base64 = Base64.getUrlEncoder().withoutPadding();
+		String header = base64.encodeToString("{\"alg\":\"none\"}".getBytes(StandardCharsets.UTF_8));
+		String payload = base64.encodeToString("{\"iss\":\"boutique-api\",\"sub\":\"1\",\"roles\":[\"ADMIN\"],\"exp\":4102444800}"
+			.getBytes(StandardCharsets.UTF_8));
+
+		mockMvc.perform(get("/api/admin/login-events").header(HttpHeaders.AUTHORIZATION, "Bearer " + header + "." + payload + "."))
+			.andExpect(status().isUnauthorized());
+	}
+
+	// Audit OWASP : un email géant faisait échouer l'écriture du journal d'audit (réponse 409 et tentative non tracée)
+	@Test
+	void oversizedLoginInputIsRejectedBeforeReachingTheDatabase() throws Exception {
+		login("a".repeat(300) + "@example.com", PASSWORD, nextIp()).andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.errors[0].field").value("email"));
+	}
+
+	// Audit OWASP : sans limite, on pouvait créer des comptes en masse et énumérer les emails existants
+	@Test
+	void registerIsRateLimitedPerIpAddress() throws Exception {
+		String ip = nextIp();
+		for (int i = 0; i < 10; i++) {
+			mockMvc.perform(post("/api/auth/register").with(fromIp(ip)).contentType(MediaType.APPLICATION_JSON)
+				.content(registerBody("client" + i + "@example.com"))).andExpect(status().isCreated());
+		}
+
+		mockMvc.perform(post("/api/auth/register").with(fromIp(ip)).contentType(MediaType.APPLICATION_JSON)
+			.content(registerBody("client10@example.com"))).andExpect(status().isTooManyRequests());
+	}
+
+	// Audit OWASP : en-têtes de sécurité ajoutés par Spring Security sur chaque réponse
+	@Test
+	void responsesCarrySecurityHeaders() throws Exception {
+		mockMvc.perform(get("/api/products"))
+			.andExpect(header().string("X-Content-Type-Options", "nosniff"))
+			.andExpect(header().string("X-Frame-Options", "DENY"))
+			.andExpect(header().string(HttpHeaders.CACHE_CONTROL, containsString("no-store")));
+	}
+
 	private Long register(String email) throws Exception {
-		String body = mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(registerBody(email)))
+		String body = mockMvc.perform(post("/api/auth/register").with(fromIp(nextIp())).contentType(MediaType.APPLICATION_JSON).content(registerBody(email)))
 			.andExpect(status().isCreated())
 			.andReturn()
 			.getResponse()

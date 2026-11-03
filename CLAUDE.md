@@ -50,8 +50,9 @@ java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod  
 - Public : `GET` catalogue, `/api/auth/**`, health, docs ; `/api/admin/**` = ADMIN ; écritures du catalogue = `@PreAuthorize` ADMIN ;
   tout le reste = authentifié
 - Identité TOUJOURS lue dans le jeton (`CurrentUser.id(jwt)`), jamais dans l'URL ou le corps (protection IDOR)
-- Connexion : verrouillage après 5 échecs (15 min), 10 tentatives/min par IP (`LoginRateLimitFilter`, en mémoire),
-  audit dans `login_events`, même message d'erreur quel que soit le cas
+- Connexion : verrouillage après 5 échecs (15 min), audit dans `login_events`, même message d'erreur quel que soit le cas
+- Connexion ET inscription : 10 requêtes/min par IP (`AuthRateLimitFilter`, en mémoire) ; tous les champs d'entrée ont un `@Size`
+- Audit OWASP et risques planifiés : `docs/audit-securite.md` (à relire aux étapes 7, 9 et 10)
 - BCrypt refuse plus de 72 octets : vérifié avant chaque appel au `PasswordEncoder`
 - `.env` : `JWT_SECRET` (32 caractères min, sinon l'appli refuse de démarrer), `ADMIN_EMAIL`, `ADMIN_PASSWORD` (premier admin)
 - Tests : `jwt()` (spring-security-test) pour les tests de tranche, vrais jetons via `/api/auth/login` pour l'intégration ;

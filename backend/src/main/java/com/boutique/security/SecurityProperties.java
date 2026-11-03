@@ -15,14 +15,17 @@ import org.springframework.validation.annotation.Validated;
 // une clé JWT absente ou trop courte empêche l'application de démarrer
 @Validated
 @ConfigurationProperties("boutique.security")
-public record SecurityProperties(@Valid @NotNull Jwt jwt, @Valid @NotNull Login login, @NotNull Admin admin) {
+public record SecurityProperties(@Valid @NotNull Jwt jwt, @Valid @NotNull Login login, @Valid @NotNull RateLimit rateLimit,
+		@NotNull Admin admin) {
 
 	public record Jwt(@NotBlank @Size(min = 32, message = "doit contenir au moins 32 caractères (256 bits)") String secret,
 			@NotBlank String issuer, @NotNull Duration accessTokenTtl, @NotNull Duration refreshTokenTtl) {
 	}
 
-	public record Login(@Positive int maxFailedAttempts, @NotNull Duration lockDuration,
-			@Positive int maxAttemptsPerMinute) {
+	public record Login(@Positive int maxFailedAttempts, @NotNull Duration lockDuration) {
+	}
+
+	public record RateLimit(@Positive int requestsPerMinute) {
 	}
 
 	public record Admin(String email, String password) {
