@@ -8,6 +8,12 @@ spring:
       include-message: always
       include-binding-errors: always
 
+# En développement, le site tourne en http://localhost : le cookie du refresh token ne peut pas exiger HTTPS
+boutique:
+  security:
+    refresh-cookie:
+      secure: false
+
 # Swagger UI : http://localhost:8080/swagger-ui.html
 springdoc:
   api-docs:

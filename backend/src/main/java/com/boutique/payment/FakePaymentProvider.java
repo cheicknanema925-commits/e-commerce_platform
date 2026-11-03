@@ -41,7 +41,7 @@ public class FakePaymentProvider implements PaymentProvider {
 	public PaymentSession initiate(PaymentRequest request) {
 		String reference = "FAKE-" + UUID.randomUUID();
 		transactions.put(reference, new VerifiedPayment(ProviderStatus.PENDING, request.amount()));
-		return new PaymentSession(reference, checkoutBaseUrl + reference);
+		return new PaymentSession(reference, checkoutBaseUrl + reference + "?commande=" + request.orderId());
 	}
 
 	@Override

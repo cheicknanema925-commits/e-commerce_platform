@@ -22,8 +22,8 @@ class PaymentConfig {
 	@Profile("!prod")
 	@ConditionalOnProperty(name = "boutique.payment.provider", havingValue = "fake", matchIfMissing = true)
 	FakePaymentProvider fakePaymentProvider(PaymentProperties properties) {
-		return new FakePaymentProvider(properties.fake().webhookSecret(),
-				properties.publicApiUrl() + "/api/dev/fake-payments/");
+		// La « page du fournisseur » est une page du frontend qui imite l'écran de paiement (Wave, Orange Money…)
+		return new FakePaymentProvider(properties.fake().webhookSecret(), properties.frontendUrl() + "/paiement-simule/");
 	}
 
 	// Délais maximum : si PayDunya ne répond pas, on ne bloque pas un fil d'exécution indéfiniment
