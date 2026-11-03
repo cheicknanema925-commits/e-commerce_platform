@@ -10,6 +10,7 @@ import com.boutique.user.Role;
 import com.boutique.user.User;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class OrderTest {
 
@@ -25,6 +26,15 @@ class OrderTest {
 		order.addItem(new Product(mode, "Sandales cuir", null, new BigDecimal("8000"), 5), 1);
 
 		assertThat(order.getTotalAmount()).isEqualByComparingTo("58000");
+		assertThat(order.getStatus()).isEqualTo(OrderStatus.CREATED);
+	}
+
+	@Test
+	void forbiddenTransitionIsRefusedAndStatusIsUnchanged() {
+		Order order = new Order(customer);
+
+		assertThatThrownBy(() -> order.changeStatus(OrderStatus.DELIVERED, OrderActor.ADMIN))
+			.isInstanceOf(InvalidOrderTransitionException.class);
 		assertThat(order.getStatus()).isEqualTo(OrderStatus.CREATED);
 	}
 

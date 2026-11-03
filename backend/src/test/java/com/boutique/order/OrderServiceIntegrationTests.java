@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.boutique.TestcontainersConfiguration;
@@ -106,6 +107,17 @@ class OrderServiceIntegrationTests {
 
 		assertThat(orders).hasSize(3).allSatisfy((order) -> assertThat(order.items()).hasSize(2));
 		assertThat(statistics.getPrepareStatementCount()).isEqualTo(1);
+	}
+
+	// Liste admin paginée : la page de commandes, puis les lignes de CES commandes. Sans ça : 1 + 3 requêtes.
+	@Test
+	void adminListIsPaginatedWithoutNPlusOne() {
+		statistics.clear();
+
+		var page = orderService.findAll(null, PageRequest.of(0, 10));
+
+		assertThat(page.content()).hasSize(3).allSatisfy((order) -> assertThat(order.items()).hasSize(2));
+		assertThat(statistics.getPrepareStatementCount()).isLessThanOrEqualTo(3);
 	}
 
 	@Test
