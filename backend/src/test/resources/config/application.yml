@@ -1,0 +1,6 @@
+# Chargé UNIQUEMENT pendant les tests : Spring Boot ajoute classpath:/config/application.yml par-dessus
+# classpath:/application.yml. Ce fichier n'est ni dans le .jar ni utilisé par ./mvnw spring-boot:run.
+boutique:
+  security:
+    jwt:
+      secret: cle-de-test-uniquement-ne-jamais-utiliser-en-production

@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -35,6 +36,22 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return problem(HttpStatus.CONFLICT, "Conflit", ex.getMessage());
 	}
 
+	@ExceptionHandler(BadRequestException.class)
+	ProblemDetail handleBadRequest(BadRequestException ex) {
+		return problem(HttpStatus.BAD_REQUEST, "Requête invalide", ex.getMessage());
+	}
+
+	@ExceptionHandler(UnauthorizedException.class)
+	ProblemDetail handleUnauthorized(UnauthorizedException ex) {
+		return problem(HttpStatus.UNAUTHORIZED, "Non authentifié", ex.getMessage());
+	}
+
+	// @PreAuthorize refusé dans un contrôleur : sans ce gestionnaire, le filet Exception ci-dessous renverrait 500
+	@ExceptionHandler(AccessDeniedException.class)
+	ProblemDetail handleAccessDenied(AccessDeniedException ex) {
+		return problem(HttpStatus.FORBIDDEN, "Accès refusé", "Vous n'avez pas les droits nécessaires.");
+	}
+
 	// Contrainte de la base violée (ex. supprimer un produit déjà commandé) : le message SQL reste dans les logs
 	@ExceptionHandler(DataIntegrityViolationException.class)
 	ProblemDetail handleDataIntegrityViolation(DataIntegrityViolationException ex) {
@@ -49,8 +66,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return problem(HttpStatus.BAD_REQUEST, "Paramètre invalide", "Propriété inconnue : " + ex.getPropertyName());
 	}
 
-	// Filet de sécurité : le client reçoit seulement une référence, le détail technique va dans les logs.
-	// Étape 4 : les erreurs de Spring Security (AccessDeniedException...) devront être traitées avant celui-ci.
+	// Filet de sécurité : le client reçoit seulement une référence, le détail technique va dans les logs
 	@ExceptionHandler(Exception.class)
 	ProblemDetail handleUnexpected(Exception ex) {
 		String errorId = UUID.randomUUID().toString();

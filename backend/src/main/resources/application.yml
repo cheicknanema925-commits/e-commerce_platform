@@ -22,6 +22,24 @@ spring:
       # Jamais de stack trace dans les réponses HTTP, quel que soit le profil
       include-stacktrace: never
 
+boutique:
+  security:
+    jwt:
+      # Clé de signature des jetons (32 caractères minimum), lue dans l'environnement : jamais dans le code.
+      # Vide = l'application refuse de démarrer (validée par SecurityProperties)
+      secret: ${JWT_SECRET:}
+      issuer: boutique-api
+      access-token-ttl: 15m
+      refresh-token-ttl: 7d
+    login:
+      max-failed-attempts: 5
+      lock-duration: 15m
+      max-attempts-per-minute: 10
+    admin:
+      # Premier compte ADMIN créé au démarrage s'il n'existe pas (vide = aucun compte créé)
+      email: ${ADMIN_EMAIL:}
+      password: ${ADMIN_PASSWORD:}
+
 # Documentation de l'API désactivée par défaut : on choisit explicitement où l'exposer (activée en dev)
 springdoc:
   api-docs:
