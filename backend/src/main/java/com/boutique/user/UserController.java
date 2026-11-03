@@ -6,22 +6,23 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.boutique.security.CurrentUser;
-
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
 
 	private final UserService userService;
 
-	public UserController(UserService userService) {
+	private final CurrentUserResolver currentUserResolver;
+
+	public UserController(UserService userService, CurrentUserResolver currentUserResolver) {
 		this.userService = userService;
+		this.currentUserResolver = currentUserResolver;
 	}
 
-	// @AuthenticationPrincipal : le jeton déjà vérifié par Spring Security
+	// @AuthenticationPrincipal : le jeton déjà vérifié par Spring Security (le nôtre ou celui de Keycloak)
 	@GetMapping("/me")
 	public UserResponse me(@AuthenticationPrincipal Jwt jwt) {
-		return userService.getProfile(CurrentUser.id(jwt));
+		return userService.getProfile(currentUserResolver.userId(jwt));
 	}
 
 }

@@ -34,6 +34,8 @@ public class User {
 
 	private Instant lockedUntil;
 
+	private String externalId;
+
 	@CreationTimestamp
 	private Instant createdAt;
 
@@ -69,6 +71,10 @@ public class User {
 		lockedUntil = null;
 	}
 
+	public void linkExternalAccount(String externalId) {
+		this.externalId = externalId;
+	}
+
 	public Long getId() {
 		return id;
 	}
@@ -95,6 +101,10 @@ public class User {
 
 	public Instant getLockedUntil() {
 		return lockedUntil;
+	}
+
+	public String getExternalId() {
+		return externalId;
 	}
 
 	public Instant getCreatedAt() {

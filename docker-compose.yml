@@ -21,5 +21,30 @@ services:
       timeout: 3s
       retries: 10
 
+  # Serveur d'identité (étape 4B). Optionnel : docker compose --profile keycloak up -d
+  # Console d'administration : http://localhost:8180 (utilisateur « admin », mot de passe KEYCLOAK_ADMIN_PASSWORD)
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.1
+    container_name: boutique-keycloak
+    profiles: [keycloak]
+    # start-dev : HTTP et base interne, pour le développement uniquement (étape 9 : mode production)
+    # --import-realm : crée le realm « boutique » depuis keycloak/realm/ au premier démarrage
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?à définir dans .env}
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "127.0.0.1:8180:8080"
+    volumes:
+      - ./keycloak/realm:/opt/keycloak/data/import:ro
+    healthcheck:
+      # L'image Keycloak n'a pas curl : on interroge /health/ready (port de gestion 9000) en bash pur
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q '200 OK' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
 volumes:
   postgres-data:

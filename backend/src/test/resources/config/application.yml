@@ -4,3 +4,6 @@ boutique:
   security:
     jwt:
       secret: cle-de-test-uniquement-ne-jamais-utiliser-en-production
+    keycloak:
+      # Émetteur fictif : les tests simulent des jetons Keycloak avec jwt() sans serveur Keycloak réel
+      issuer-uri: http://keycloak.test/realms/boutique

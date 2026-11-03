@@ -16,7 +16,7 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 @ConfigurationProperties("boutique.security")
 public record SecurityProperties(@Valid @NotNull Jwt jwt, @Valid @NotNull Login login, @Valid @NotNull RateLimit rateLimit,
-		@NotNull Admin admin) {
+		@NotNull Admin admin, @NotNull Keycloak keycloak) {
 
 	public record Jwt(@NotBlank @Size(min = 32, message = "doit contenir au moins 32 caractères (256 bits)") String secret,
 			@NotBlank String issuer, @NotNull Duration accessTokenTtl, @NotNull Duration refreshTokenTtl) {
@@ -29,6 +29,15 @@ public record SecurityProperties(@Valid @NotNull Jwt jwt, @Valid @NotNull Login 
 	}
 
 	public record Admin(String email, String password) {
+	}
+
+	// issuerUri vide = Keycloak désactivé : seuls les jetons émis par l'API elle-même sont acceptés
+	public record Keycloak(String issuerUri, @NotBlank String audience) {
+
+		public boolean enabled() {
+			return issuerUri != null && !issuerUri.isBlank();
+		}
+
 	}
 
 }
