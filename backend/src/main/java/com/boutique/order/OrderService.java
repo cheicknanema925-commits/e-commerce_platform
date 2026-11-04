@@ -2,7 +2,9 @@ package com.boutique.order;
 
 import java.time.Instant;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -19,6 +21,8 @@ import com.boutique.catalog.ProductRepository;
 import com.boutique.common.PageResponse;
 import com.boutique.user.User;
 import com.boutique.user.UserNotFoundException;
+import com.boutique.store.StoreSettings;
+import com.boutique.store.StoreSettingsService;
 import com.boutique.user.UserRepository;
 
 @Service
@@ -37,15 +41,19 @@ public class OrderService {
 
 	private final ApplicationEventPublisher eventPublisher;
 
+	private final StoreSettingsService storeSettingsService;
+
 	public OrderService(OrderRepository orderRepository, DeliveryRepository deliveryRepository,
 			ProductRepository productRepository, UserRepository userRepository, CartRepository cartRepository,
-			ApplicationEventPublisher eventPublisher) {
+			ApplicationEventPublisher eventPublisher,
+			StoreSettingsService storeSettingsService) {
 		this.orderRepository = orderRepository;
 		this.deliveryRepository = deliveryRepository;
 		this.productRepository = productRepository;
 		this.userRepository = userRepository;
 		this.cartRepository = cartRepository;
 		this.eventPublisher = eventPublisher;
+		this.storeSettingsService = storeSettingsService;
 	}
 
 	public List<OrderResponse> findOrdersOfUser(Long userId) {
@@ -59,7 +67,7 @@ public class OrderService {
 	public DeliveryResponse findDeliveryOfUser(Long userId, Long orderId) {
 		getOwnedOrder(userId, orderId);
 		return deliveryRepository.findByOrderId(orderId)
-			.map(DeliveryResponse::from)
+			.map(DeliveryResponse::forCustomer)
 			.orElseThrow(() -> new DeliveryNotFoundException(orderId));
 	}
 
@@ -68,14 +76,25 @@ public class OrderService {
 			String search, Pageable pageable) {
 		Page<Order> page = orderRepository.findAll(OrderSpecifications.matching(statuses, paymentMethod, search),
 				pageable);
+		Map<Long, Courier> couriers = new HashMap<>();
 		if (page.hasContent()) {
-			orderRepository.fetchItems(page.map(Order::getId).getContent());
+			List<Long> ids = page.map(Order::getId).getContent();
+			orderRepository.fetchItems(ids);
+			deliveryRepository.findWithCourierByOrderIdIn(ids)
+				.stream()
+				.filter((delivery) -> delivery.getCourier() != null)
+				.forEach((delivery) -> couriers.put(delivery.getOrder().getId(), delivery.getCourier()));
 		}
-		return PageResponse.from(page.map(AdminOrderResponse::from));
+		return PageResponse.from(page.map((order) -> AdminOrderResponse.from(order, couriers.get(order.getId()))));
 	}
 
 	public AdminOrderResponse findForAdmin(Long orderId) {
-		return AdminOrderResponse.from(getOrder(orderId));
+		return toAdminResponse(getOrder(orderId));
+	}
+
+	private AdminOrderResponse toAdminResponse(Order order) {
+		Courier courier = deliveryRepository.findByOrderId(order.getId()).map(Delivery::getCourier).orElse(null);
+		return AdminOrderResponse.from(order, courier);
 	}
 
 	public DeliveryResponse findDeliveryForAdmin(Long orderId) {
@@ -94,6 +113,15 @@ public class OrderService {
 			.toList();
 		Order order = placeOrder(userId, lines, request.paymentMethod());
 		DeliveryAddressRequest address = request.delivery();
+		// Paramètres de la boutique vérifiés par le serveur ; une exception annule tout (stock compris : rollback)
+		StoreSettings settings = storeSettingsService.current();
+		if (request.paymentMethod() == PaymentMethod.ONLINE) {
+			settings.checkOnlinePaymentAllowed();
+		}
+		else {
+			settings.checkCashOnDeliveryAllowed(order.getTotalAmount(), address.city());
+			order.addServiceFee(settings.getCodFee());
+		}
 		deliveryRepository.save(new Delivery(order, address.addressLine().strip(), address.city().strip(),
 				address.phone().strip(), address.latitude(), address.longitude()));
 		cart.clear();
@@ -134,7 +162,7 @@ public class OrderService {
 			eventPublisher
 				.publishEvent(new OrderDeliveredEvent(order.getId(), order.getPaymentMethod(), order.getTotalAmount()));
 		}
-		return AdminOrderResponse.from(order);
+		return toAdminResponse(order);
 	}
 
 	// ÉVÉNEMENT pour ce qui n'est qu'une conséquence (notifier le client…) : le module commande ne connaît pas
