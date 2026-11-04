@@ -1,9 +1,11 @@
 package com.boutique.admin;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.UnaryOperator;
@@ -16,15 +18,20 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.boutique.admin.AdminStatsResponse.BestSeller;
 import com.boutique.admin.AdminStatsResponse.Catalog;
+import com.boutique.admin.AdminStatsResponse.CategorySales;
+import com.boutique.admin.AdminStatsResponse.Customers;
 import com.boutique.admin.AdminStatsResponse.LowStock;
+import com.boutique.admin.AdminStatsResponse.Payments;
 import com.boutique.admin.AdminStatsResponse.Period;
 import com.boutique.admin.AdminStatsResponse.StatusCount;
+import com.boutique.catalog.Product;
 import com.boutique.catalog.ProductRepository;
 import com.boutique.order.OrderItemRepository;
 import com.boutique.order.OrderRepository;
 import com.boutique.order.OrderStatus;
 import com.boutique.order.PaymentMethod;
 import com.boutique.payment.PaymentRepository;
+import com.boutique.payment.PaymentService;
 import com.boutique.user.Role;
 import com.boutique.user.UserRepository;
 
@@ -61,20 +68,42 @@ public class AdminStatsService {
 
 	public AdminStatsResponse stats() {
 		LocalDate today = LocalDate.now(SHOP_ZONE);
-		return new AdminStatsResponse(paymentRepository.totalCollected(), orderRepository.count(),
-				userRepository.countByRole(Role.CUSTOMER), periodSince(today), periodSince(today.withDayOfMonth(1)),
+		Instant monthStart = today.withDayOfMonth(1).atStartOfDay(SHOP_ZONE).toInstant();
+		BigDecimal collected = paymentRepository.totalCollected();
+		BigDecimal collectedCash = paymentRepository.collectedBy(PaymentService.CASH);
+		OrderRepository.AmountCount cashToCollect = orderRepository.cashToCollect();
+		Double average = orderRepository.averageOrderValue();
+
+		List<OrderItemRepository.ProductSales> sales = orderItemRepository.bestSellers(PageRequest.of(0, 5));
+		Map<Long, String> images = mainImages(sales.stream().map(OrderItemRepository.ProductSales::getProductId).toList());
+		List<Product> lowStock = productRepository.findTop10ByStockLessThanEqualOrderByStockAsc(LOW_STOCK_THRESHOLD);
+
+		return new AdminStatsResponse(collected, orderRepository.count(), userRepository.countByRole(Role.CUSTOMER),
+				periodSince(today), periodSince(today.withDayOfMonth(1)),
 				orderRepository.countByStatusAndPaymentMethod(OrderStatus.CREATED, PaymentMethod.CASH_ON_DELIVERY),
+				(average == null) ? BigDecimal.ZERO : BigDecimal.valueOf(average).setScale(0, RoundingMode.HALF_UP),
+				new Payments(collected.subtract(collectedCash), collectedCash, cashToCollect.getAmount(),
+						cashToCollect.getCount()),
+				new Customers(userRepository.countByRoleAndCreatedAtGreaterThanEqual(Role.CUSTOMER, monthStart),
+						orderRepository.countRepeatCustomers()),
 				orderRepository.countByStatus().stream().map((s) -> new StatusCount(s.getStatus(), s.getCount())).toList(),
-				orderItemRepository.bestSellers(PageRequest.of(0, 5))
+				orderItemRepository.salesByCategory()
 					.stream()
-					.map((p) -> new BestSeller(p.getProductId(), p.getName(), p.getQuantity()))
+					.map((c) -> new CategorySales(c.getCategory(), c.getQuantity(), c.getRevenue()))
 					.toList(),
-				productRepository.findTop10ByStockLessThanEqualOrderByStockAsc(LOW_STOCK_THRESHOLD)
-					.stream()
-					.map((p) -> new LowStock(p.getId(), p.getName(), p.getStock()))
+				sales.stream()
+					.map((p) -> new BestSeller(p.getProductId(), p.getName(), p.getQuantity(), images.get(p.getProductId())))
 					.toList(),
+				lowStock.stream().map((p) -> new LowStock(p.getId(), p.getName(), p.getStock(), p.getMainImageUrl())).toList(),
 				new Catalog(productRepository.count(), productRepository.countByStock(0),
 						productRepository.stockValue()));
+	}
+
+	// Photo principale de quelques produits : 1 requête pour les produits, 1 pour leurs photos (@BatchSize)
+	private Map<Long, String> mainImages(List<Long> productIds) {
+		Map<Long, String> urls = new HashMap<>();
+		productRepository.findAllById(productIds).forEach((p) -> urls.put(p.getId(), p.getMainImageUrl()));
+		return urls;
 	}
 
 	// 30 derniers jours (DAY) ou 12 derniers mois (MONTH), aujourd'hui compris. Deux requêtes GROUP BY, puis on

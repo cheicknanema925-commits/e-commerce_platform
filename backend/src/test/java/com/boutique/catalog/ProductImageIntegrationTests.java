@@ -25,6 +25,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import com.boutique.TestcontainersConfiguration;
+import com.boutique.cart.CartRepository;
 import com.boutique.order.OrderLineRequest;
 import com.boutique.order.OrderRepository;
 import com.boutique.order.OrderService;
@@ -38,6 +39,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -69,6 +71,9 @@ class ProductImageIntegrationTests {
 	private OrderRepository orderRepository;
 
 	@Autowired
+	private CartRepository cartRepository;
+
+	@Autowired
 	private CatalogProperties catalogProperties;
 
 	private Long productId;
@@ -81,6 +86,7 @@ class ProductImageIntegrationTests {
 
 	@AfterEach
 	void cleanUp() {
+		cartRepository.deleteAll();
 		orderRepository.deleteAll();
 		productRepository.deleteAll();
 		userRepository.deleteAll();
@@ -167,6 +173,20 @@ class ProductImageIntegrationTests {
 		mockMvc.perform(delete("/api/products/{id}", productId).with(admin())).andExpect(status().isConflict());
 
 		assertThat(Files.exists(file(url))).isTrue();
+	}
+
+	// Le panier montre la photo principale de chaque article
+	@Test
+	void cartShowsTheMainPhotoOfEachItem() throws Exception {
+		String url = upload(png(), "photo.png");
+		Long userId = userRepository.save(new User("awa@example.com", "Awa Diop", Role.CUSTOMER)).getId();
+		RequestPostProcessor awa = jwt().jwt((token) -> token.issuer("boutique-api").subject(String.valueOf(userId)));
+
+		mockMvc.perform(post("/api/cart/items").with(awa)
+			.contentType(MediaType.APPLICATION_JSON)
+			.content("{\"productId\": %d, \"quantity\": 1}".formatted(productId)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.items[0].imageUrl").value(url));
 	}
 
 	@Test

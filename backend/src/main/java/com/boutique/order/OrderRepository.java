@@ -1,5 +1,6 @@
 package com.boutique.order;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
@@ -35,6 +36,35 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
 
 	// Commandes en espèces à confirmer, commandes en ligne en attente de paiement…
 	long countByStatusAndPaymentMethod(OrderStatus status, PaymentMethod paymentMethod);
+
+	// Montant moyen d'une commande (annulées exclues) ; avg renvoie un Double, null s'il n'y a aucune commande
+	@Query("select avg(o.totalAmount) from Order o where o.status <> com.boutique.order.OrderStatus.CANCELLED")
+	Double averageOrderValue();
+
+	// Espèces encore à récupérer : commandes payables à la livraison, ni livrées ni annulées
+	@Query("""
+			select count(o) as count, coalesce(sum(o.totalAmount), 0) as amount from Order o
+			where o.paymentMethod = com.boutique.order.PaymentMethod.CASH_ON_DELIVERY
+			  and o.status in (com.boutique.order.OrderStatus.CREATED, com.boutique.order.OrderStatus.PREPARING,
+			                   com.boutique.order.OrderStatus.SHIPPED)
+			""")
+	AmountCount cashToCollect();
+
+	// Clients fidèles : au moins 2 commandes non annulées (sous-requête corrélée)
+	@Query("""
+			select count(u) from User u
+			where (select count(o) from Order o where o.user = u
+			       and o.status <> com.boutique.order.OrderStatus.CANCELLED) >= 2
+			""")
+	long countRepeatCustomers();
+
+	interface AmountCount {
+
+		long getCount();
+
+		BigDecimal getAmount();
+
+	}
 
 	// Commandes passées depuis une date (aujourd'hui, ce mois-ci), annulées exclues
 	long countByCreatedAtGreaterThanEqualAndStatusNot(Instant from, OrderStatus excluded);

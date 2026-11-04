@@ -1,6 +1,7 @@
 package com.boutique.order;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 
 import org.springframework.context.ApplicationEventPublisher;
@@ -63,9 +64,9 @@ public class OrderService {
 	}
 
 	// Pagination en 2 temps : la page de commandes (sans lignes), puis les lignes et clients de CES commandes
-	public PageResponse<AdminOrderResponse> findAll(OrderStatus status, PaymentMethod paymentMethod, String search,
-			Pageable pageable) {
-		Page<Order> page = orderRepository.findAll(OrderSpecifications.matching(status, paymentMethod, search),
+	public PageResponse<AdminOrderResponse> findAll(Collection<OrderStatus> statuses, PaymentMethod paymentMethod,
+			String search, Pageable pageable) {
+		Page<Order> page = orderRepository.findAll(OrderSpecifications.matching(statuses, paymentMethod, search),
 				pageable);
 		if (page.hasContent()) {
 			orderRepository.fetchItems(page.map(Order::getId).getContent());
@@ -101,7 +102,12 @@ public class OrderService {
 
 	@Transactional
 	public OrderResponse createOrder(Long userId, List<OrderLineRequest> lines) {
-		return OrderResponse.from(placeOrder(userId, lines, PaymentMethod.ONLINE));
+		return createOrder(userId, lines, PaymentMethod.ONLINE);
+	}
+
+	@Transactional
+	public OrderResponse createOrder(Long userId, List<OrderLineRequest> lines, PaymentMethod paymentMethod) {
+		return OrderResponse.from(placeOrder(userId, lines, paymentMethod));
 	}
 
 	@Transactional

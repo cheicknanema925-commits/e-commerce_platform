@@ -54,6 +54,10 @@ public class ProductImage {
 		return filename;
 	}
 
+	public String getUrl() {
+		return ImageController.PATH + filename;
+	}
+
 	public int getPosition() {
 		return position;
 	}

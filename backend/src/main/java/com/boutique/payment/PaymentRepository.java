@@ -18,6 +18,11 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 	@Query("select coalesce(sum(p.amount), 0) from Payment p where p.status = com.boutique.payment.PaymentStatus.SUCCEEDED")
 	BigDecimal totalCollected();
 
+	// Encaissé par un fournisseur donné (ex. « cash » : espèces reçues à la livraison)
+	@Query("select coalesce(sum(p.amount), 0) from Payment p where p.status = com.boutique.payment.PaymentStatus.SUCCEEDED "
+			+ "and p.provider = :provider")
+	BigDecimal collectedBy(String provider);
+
 	@Query("select coalesce(sum(p.amount), 0) from Payment p where p.status = com.boutique.payment.PaymentStatus.SUCCEEDED "
 			+ "and p.updatedAt >= :from")
 	BigDecimal collectedSince(Instant from);

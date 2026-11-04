@@ -24,6 +24,7 @@ import com.boutique.order.OrderLineRequest;
 import com.boutique.order.OrderRepository;
 import com.boutique.order.OrderService;
 import com.boutique.order.OrderStatus;
+import com.boutique.order.PaymentMethod;
 import com.boutique.payment.Payment;
 import com.boutique.payment.PaymentRepository;
 import com.boutique.user.Role;
@@ -116,7 +117,42 @@ class AdminIntegrationTests {
 			// Stock au prix de vente : 18 boubous × 25 000 + 4 sandales × 8 000
 			.andExpect(jsonPath("$.catalog.productCount").value(2))
 			.andExpect(jsonPath("$.catalog.outOfStock").value(0))
-			.andExpect(jsonPath("$.catalog.stockValue").value(482000));
+			.andExpect(jsonPath("$.catalog.stockValue").value(482000))
+			// Panier moyen : seule la commande payée compte (50 000), l'annulée est exclue
+			.andExpect(jsonPath("$.averageOrderValue").value(50000))
+			.andExpect(jsonPath("$.payments.collectedOnline").value(50000))
+			.andExpect(jsonPath("$.payments.collectedCash").value(0))
+			.andExpect(jsonPath("$.payments.cashToCollect").value(0))
+			.andExpect(jsonPath("$.customers.newThisMonth").value(2))
+			.andExpect(jsonPath("$.customers.repeat").value(0))
+			.andExpect(jsonPath("$.salesByCategory.length()").value(1))
+			.andExpect(jsonPath("$.salesByCategory[0].category").value("Mode"))
+			.andExpect(jsonPath("$.salesByCategory[0].quantity").value(2))
+			.andExpect(jsonPath("$.salesByCategory[0].revenue").value(50000));
+	}
+
+	// Espèces : à récupérer tant que la commande n'est pas livrée, puis comptées comme encaissées
+	@Test
+	void cashOnDeliveryIsToCollectUntilDeliveredThenCollected() throws Exception {
+		Long awaId = userRepository.findByEmail("awa@example.com").orElseThrow().getId();
+		Long boubouId = productRepository.findAll().stream().filter((p) -> p.getName().equals("Boubou bazin")).findFirst().orElseThrow().getId();
+		Long cashOrderId = orderService.createOrder(awaId, List.of(new OrderLineRequest(boubouId, 1)), PaymentMethod.CASH_ON_DELIVERY).id();
+
+		mockMvc.perform(get("/api/admin/stats").with(admin()))
+			.andExpect(jsonPath("$.awaitingConfirmation").value(1))
+			.andExpect(jsonPath("$.payments.cashToCollect").value(25000))
+			.andExpect(jsonPath("$.payments.cashToCollectOrders").value(1))
+			// Awa a maintenant 2 commandes non annulées : cliente fidèle
+			.andExpect(jsonPath("$.customers.repeat").value(1));
+
+		orderService.changeStatusAsAdmin(cashOrderId, OrderStatus.PREPARING);
+		orderService.changeStatusAsAdmin(cashOrderId, OrderStatus.SHIPPED);
+		orderService.changeStatusAsAdmin(cashOrderId, OrderStatus.DELIVERED);
+
+		mockMvc.perform(get("/api/admin/stats").with(admin()))
+			.andExpect(jsonPath("$.payments.cashToCollect").value(0))
+			.andExpect(jsonPath("$.payments.collectedCash").value(25000))
+			.andExpect(jsonPath("$.payments.collectedOnline").value(50000));
 	}
 
 	// Une entrée par jour, même vide : le graphique n'a pas de trou. La dernière entrée = aujourd'hui.
@@ -175,6 +211,12 @@ class AdminIntegrationTests {
 
 		mockMvc.perform(get("/api/admin/orders").param("paymentMethod", "CASH_ON_DELIVERY").with(admin()))
 			.andExpect(jsonPath("$.totalElements").value(0));
+
+		// Plusieurs statuts à la fois
+		mockMvc.perform(get("/api/admin/orders").param("status", "PAID,CANCELLED").with(admin()))
+			.andExpect(jsonPath("$.totalElements").value(2));
+		mockMvc.perform(get("/api/admin/orders").param("status", "PAID").with(admin()))
+			.andExpect(jsonPath("$.totalElements").value(1));
 	}
 
 	@Test

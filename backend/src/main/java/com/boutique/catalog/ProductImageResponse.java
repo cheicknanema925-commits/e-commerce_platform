@@ -4,7 +4,7 @@ package com.boutique.catalog;
 public record ProductImageResponse(Long id, String url) {
 
 	static ProductImageResponse from(ProductImage image) {
-		return new ProductImageResponse(image.getId(), ImageController.PATH + image.getFilename());
+		return new ProductImageResponse(image.getId(), image.getUrl());
 	}
 
 }

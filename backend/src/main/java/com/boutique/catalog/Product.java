@@ -154,6 +154,11 @@ public class Product {
 		return stock;
 	}
 
+	// URL de la photo principale, ou null si le produit n'a pas encore de photo
+	public String getMainImageUrl() {
+		return images.isEmpty() ? null : images.getFirst().getUrl();
+	}
+
 	public List<ProductImage> getImages() {
 		return Collections.unmodifiableList(images);
 	}

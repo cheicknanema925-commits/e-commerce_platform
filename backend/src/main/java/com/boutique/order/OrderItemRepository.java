@@ -1,5 +1,6 @@
 package com.boutique.order;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import org.springframework.data.domain.Pageable;
@@ -20,6 +21,27 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
 			order by sum(i.quantity) desc
 			""")
 	List<ProductSales> bestSellers(Pageable pageable);
+
+	// Ventes par catégorie (quantités et montant au prix payé), commandes annulées exclues
+	@Query("""
+			select i.product.category.name as category, sum(i.quantity) as quantity,
+			       sum(i.unitPrice * i.quantity) as revenue
+			from OrderItem i
+			where i.order.status <> com.boutique.order.OrderStatus.CANCELLED
+			group by i.product.category.name
+			order by sum(i.unitPrice * i.quantity) desc
+			""")
+	List<CategorySales> salesByCategory();
+
+	interface CategorySales {
+
+		String getCategory();
+
+		long getQuantity();
+
+		BigDecimal getRevenue();
+
+	}
 
 	interface ProductSales {
 

@@ -1,5 +1,7 @@
 package com.boutique.order;
 
+import java.util.List;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 
@@ -30,7 +32,8 @@ public class AdminOrderController {
 	}
 
 	@GetMapping
-	public PageResponse<AdminOrderResponse> findAll(@RequestParam(required = false) OrderStatus status,
+	// ?status=CREATED,PREPARING : plusieurs statuts séparés par des virgules (Spring découpe la valeur en liste)
+	public PageResponse<AdminOrderResponse> findAll(@RequestParam(required = false) List<OrderStatus> status,
 			@RequestParam(required = false) PaymentMethod paymentMethod,
 			@RequestParam(required = false) @Size(max = 100) String q,
 			@PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {

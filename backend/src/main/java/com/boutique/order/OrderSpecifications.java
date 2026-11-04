@@ -1,6 +1,7 @@
 package com.boutique.order;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import jakarta.persistence.criteria.Join;
@@ -12,18 +13,18 @@ import org.springframework.util.StringUtils;
 import com.boutique.common.LikePatterns;
 import com.boutique.user.User;
 
-// Filtres facultatifs des commandes du back-office : statut, mode de paiement, recherche
+// Filtres facultatifs des commandes du back-office : un ou plusieurs statuts, mode de paiement, recherche
 // (« 42 » ou « #42 » = numéro de commande ; sinon nom ou email du client)
 final class OrderSpecifications {
 
 	private OrderSpecifications() {
 	}
 
-	static Specification<Order> matching(OrderStatus status, PaymentMethod paymentMethod, String search) {
+	static Specification<Order> matching(Collection<OrderStatus> statuses, PaymentMethod paymentMethod, String search) {
 		return (root, query, cb) -> {
 			List<Predicate> predicates = new ArrayList<>();
-			if (status != null) {
-				predicates.add(cb.equal(root.get("status"), status));
+			if (statuses != null && !statuses.isEmpty()) {
+				predicates.add(root.get("status").in(statuses));
 			}
 			if (paymentMethod != null) {
 				predicates.add(cb.equal(root.get("paymentMethod"), paymentMethod));
