@@ -61,6 +61,10 @@ export function AdminProductFormPage() {
       description: String(form.get('description') ?? '').trim() || null,
       price: Number(form.get('price')),
       stock: Number(form.get('stock')),
+      brand: String(form.get('brand') ?? '').trim() || null,
+      sku: String(form.get('sku') ?? '').trim() || null,
+      // Vide = pas de promotion
+      compareAtPrice: form.get('compareAtPrice') ? Number(form.get('compareAtPrice')) : null,
     }
     if (id !== null) {
       await update.mutateAsync({ id, product: input })
@@ -122,6 +126,7 @@ export function AdminProductFormPage() {
             <div className="flex flex-col gap-3.5">
               {mutation.isError && Object.keys(errors).length === 0 && <ErrorMessage error={mutation.error} />}
               <FormField name="name" label="Nom du produit *" required maxLength={100} defaultValue={current?.name} placeholder="Ex. Boubou en bazin brodé" error={errors.name} />
+              <div className="grid gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="categoryId" className="text-sm font-semibold">
                   Catégorie *
@@ -136,6 +141,8 @@ export function AdminProductFormPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+              <FormField name="brand" label="Marque" maxLength={80} defaultValue={current?.brand ?? ''} placeholder="Ex. Vlisco, Samsung" error={errors.brand} />
               </div>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="description" className="text-sm font-semibold">
@@ -164,6 +171,28 @@ export function AdminProductFormPage() {
                   placeholder="Ex. 25"
                   hint="0 = rupture : le produit reste visible mais ne peut plus être commandé."
                   error={errors.stock}
+                />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <FormField
+                  name="compareAtPrice"
+                  label="Prix barré (FCFA)"
+                  type="number"
+                  min={1}
+                  step={1}
+                  defaultValue={current?.compareAtPrice ?? ''}
+                  hint="Facultatif : prix avant remise, plus élevé que le prix de vente. Le produit apparaît dans « Promotions »."
+                  error={errors.compareAtPrice}
+                />
+                <FormField
+                  name="sku"
+                  label="Référence"
+                  maxLength={40}
+                  pattern="[A-Za-z0-9._\-]{1,40}"
+                  defaultValue={current?.sku ?? ''}
+                  placeholder="Ex. SHA-007"
+                  hint="Code interne unique. Générée automatiquement si vide."
+                  error={errors.sku}
                 />
               </div>
               <p className="text-[13px] text-stone-600">Les champs marqués d’un * sont obligatoires.</p>

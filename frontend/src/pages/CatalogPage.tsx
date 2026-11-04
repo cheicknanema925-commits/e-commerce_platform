@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router'
 import type { ProductSort } from '../api/catalog.ts'
 import type { Category } from '../api/types.ts'
 import { ErrorMessage } from '../components/ErrorMessage.tsx'
+import { NewsletterSignup } from '../components/NewsletterSignup.tsx'
 import { Icon, type IconName } from '../components/Icon.tsx'
 import { Pagination } from '../components/Pagination.tsx'
 import { ProductCard } from '../components/ProductCard.tsx'
@@ -32,11 +33,12 @@ export function CatalogPage() {
     category: searchParams.get('category') ?? undefined,
     sort: (searchParams.get('sort') as ProductSort | null) ?? undefined,
     page: Number(searchParams.get('page') ?? 0),
+    promo: searchParams.get('promo') === '1',
   }
   const products = useProducts(filters)
   const categories = useCategories()
   // Accueil = aucune recherche, aucun rayon, première page : on montre l'étal, les services et les rayons
-  const home = !filters.q && !filters.category && filters.page === 0
+  const home = !filters.q && !filters.category && !filters.promo && filters.page === 0
   const category = categories.data?.find((c) => c.slug === filters.category)
 
   // Changer un filtre ramène à la première page
@@ -58,7 +60,7 @@ export function CatalogPage() {
     document.getElementById('produits')?.scrollIntoView()
   }
 
-  const title = filters.q ? 'Résultats de recherche' : (category?.name ?? (home ? 'Nos produits' : 'Tous les produits'))
+  const title = filters.q ? 'Résultats de recherche' : filters.promo ? 'Promotions' : (category?.name ?? (home ? 'Nos produits' : 'Tous les produits'))
   return (
     <>
       {home && (
@@ -96,7 +98,9 @@ export function CatalogPage() {
         <SectionTitle
           id="titre-produits"
           title={title}
-          subtitle={filters.q ? `Pour « ${filters.q} »` : home ? 'Les derniers produits arrivés dans la boutique.' : undefined}
+          subtitle={
+            filters.q ? `Pour « ${filters.q} »` : filters.promo ? 'Les produits à prix réduit, en ce moment.' : home ? 'Les derniers produits arrivés dans la boutique.' : undefined
+          }
           action={
             !home && (
               <Link to="/" className="text-sm font-semibold whitespace-nowrap text-brand-700 underline underline-offset-3">
@@ -108,8 +112,11 @@ export function CatalogPage() {
 
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div role="group" aria-label="Filtrer par rayon" className="flex flex-wrap gap-2">
-            <Chip pressed={!filters.category} onClick={() => updateFilter('category', '')}>
+            <Chip pressed={!filters.category && !filters.promo} onClick={() => setSearchParams({})}>
               Tous
+            </Chip>
+            <Chip pressed={filters.promo} onClick={() => updateFilter('promo', filters.promo ? '' : '1')}>
+              Promotions
             </Chip>
             {categories.data?.map((c) => (
               <Chip key={c.id} pressed={filters.category === c.slug} onClick={() => updateFilter('category', c.slug)}>
@@ -163,6 +170,8 @@ export function CatalogPage() {
           </>
         )}
       </section>
+
+      {home && <NewsletterSignup />}
     </>
   )
 }

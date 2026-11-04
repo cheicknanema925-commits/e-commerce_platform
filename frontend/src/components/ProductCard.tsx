@@ -2,8 +2,10 @@ import { Link, useNavigate } from 'react-router'
 import type { Product } from '../api/types.ts'
 import { useAuth } from '../auth/useAuth.ts'
 import { useAddToCart, useCart } from '../hooks/useCart.ts'
+import { formatPrice } from '../lib/format.ts'
 import { stockText } from '../lib/stock.ts'
 import { useToast } from '../lib/toast.ts'
+import { FavoriteButton } from './FavoriteButton.tsx'
 import { PriceTag } from './PriceTag.tsx'
 import { ProductThumbnail } from './ProductThumbnail.tsx'
 
@@ -35,20 +37,33 @@ export function ProductCard({ product }: { product: Product }) {
     <article className="relative flex h-full flex-col overflow-hidden rounded-lg border border-stone-200 bg-white transition hover:border-stone-400">
       <div className="relative">
         <ProductThumbnail product={product} className="aspect-[4/3] w-full text-7xl" />
-        {product.stock === 0 && (
-          <span className="absolute top-3 left-3 rounded-sm bg-bissap px-2 py-1 text-[13px] font-bold text-white">Rupture</span>
+        {product.stock === 0 ? (
+          <span className="absolute top-3 left-3 rounded-sm bg-stone-900 px-2 py-1 text-[13px] font-bold text-white">Rupture</span>
+        ) : (
+          product.discountPercent !== null && (
+            <span className="absolute top-3 left-3 rounded-sm bg-bissap px-2 py-1 text-[13px] font-bold text-white">−{product.discountPercent} %</span>
+          )
         )}
+        <div className="absolute top-2.5 right-2.5">
+          <FavoriteButton product={product} />
+        </div>
       </div>
       <div className="flex flex-1 flex-col px-4 pt-3.5 pb-4">
-        <p className="text-[13px] text-stone-600">{product.categoryName}</p>
+        <p className="text-[13px] text-stone-600">{product.brand ? `${product.brand} · ${product.categoryName}` : product.categoryName}</p>
         <h3 className="mt-0.5 mb-3 min-h-[42px] leading-snug font-semibold">
           {/* Le lien couvre toute la carte (::after) tout en restant un seul lien pour le clavier */}
           <Link to={`/produits/${product.id}`} className="after:absolute after:inset-0">
             {product.name}
           </Link>
         </h3>
-        <div className="mt-auto">
+        <div className="mt-auto flex flex-wrap items-center gap-2.5">
           <PriceTag amount={product.price} />
+          {product.compareAtPrice !== null && (
+            <s className="text-sm text-stone-600">
+              <span className="sr-only">Ancien prix : </span>
+              {formatPrice(product.compareAtPrice)}
+            </s>
+          )}
         </div>
         <p className={`mt-2.5 text-[13px] font-medium ${stock.className}`}>{stock.text}</p>
         {product.stock > 0 && (

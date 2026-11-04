@@ -4,6 +4,8 @@ import type { AdminOrder, OrderStatus } from '../../api/types.ts'
 import { ErrorMessage } from '../../components/ErrorMessage.tsx'
 import { OrderStatusBadge } from '../../components/OrderStatusBadge.tsx'
 import { Pagination } from '../../components/Pagination.tsx'
+import { CourierSelect } from '../../components/admin/CourierSelect.tsx'
+import { ExportButton } from '../../components/admin/ExportButton.tsx'
 import { PaymentCell } from '../../components/admin/PaymentCell.tsx'
 import { filterInput, Kpi, KpiStrip, PageHeader, TableCard, td, th } from '../../components/admin/ui.tsx'
 import { useAdminOrders, useChangeOrderStatus, useStats } from '../../hooks/useAdmin.ts'
@@ -42,7 +44,7 @@ export function AdminOrdersPage() {
   const count = (status: OrderStatus) => stats.data?.ordersByStatus.find((s) => s.status === status)?.count ?? 0
   return (
     <>
-      <PageHeader title="Suivi des commandes" description="Suivez les achats et mettez à jour leur statut de traitement." />
+      <PageHeader title="Suivi des commandes" description="Suivez les achats et mettez à jour leur statut de traitement." actions={<ExportButton name="orders" label="Exporter les commandes" />} />
 
       {stats.data && (
         <KpiStrip>
@@ -139,6 +141,7 @@ function OrdersTable({ orders, total, dimmed }: { orders?: AdminOrder[]; total?:
             <th scope="col" className={`${th} text-right`}>Total</th>
             <th scope="col" className={th}>Paiement</th>
             <th scope="col" className={th}>Statut</th>
+            <th scope="col" className={th}>Livreur</th>
             <th scope="col" className={th}>Changer le statut</th>
           </tr>
         </thead>
@@ -162,6 +165,9 @@ function OrdersTable({ orders, total, dimmed }: { orders?: AdminOrder[]; total?:
               </td>
               <td className={td}>
                 <OrderStatusBadge status={order.status} paymentMethod={order.paymentMethod} />
+              </td>
+              <td className={td}>
+                <CourierSelect order={order} />
               </td>
               <td className={td}>
                 {/* Seules les transitions permises par la machine à états du serveur sont proposées */}

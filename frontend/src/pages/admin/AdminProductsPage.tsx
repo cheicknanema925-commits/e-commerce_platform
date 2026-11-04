@@ -4,6 +4,7 @@ import { ApiError } from '../../api/client.ts'
 import { ErrorMessage } from '../../components/ErrorMessage.tsx'
 import { Icon } from '../../components/Icon.tsx'
 import { Pagination } from '../../components/Pagination.tsx'
+import { ExportButton } from '../../components/admin/ExportButton.tsx'
 import { ProductThumbnail } from '../../components/ProductThumbnail.tsx'
 import { btnMini, btnMiniDanger, btnPrimary, filterInput, PageHeader, TableCard, td, th } from '../../components/admin/ui.tsx'
 import { useDeleteProduct } from '../../hooks/useAdmin.ts'
@@ -53,10 +54,13 @@ export function AdminProductsPage() {
         title="Gestion des produits"
         description="Consultez, modifiez et gérez votre catalogue."
         actions={
+          <>
+          <ExportButton name="products" />
           <Link to="/admin/produits/nouveau" className={btnPrimary}>
             <Icon name="plus" className="size-4" />
             Ajouter un article
           </Link>
+          </>
         }
       />
 
@@ -65,7 +69,7 @@ export function AdminProductsPage() {
           <label htmlFor="recherche-produit" className="sr-only">
             Rechercher un produit
           </label>
-          <input id="recherche-produit" name="q" type="search" key={q} defaultValue={q} maxLength={100} placeholder="Rechercher par nom" className={`${filterInput} w-full sm:w-72`} />
+          <input id="recherche-produit" name="q" type="search" key={q} defaultValue={q} maxLength={100} placeholder="Rechercher par nom, marque ou référence" className={`${filterInput} w-full sm:w-72`} />
         </form>
         <select aria-label="Catégorie" value={category ?? ''} onChange={(event) => update('categorie', event.target.value)} className={filterInput}>
           <option value="">Toutes les catégories</option>
@@ -99,6 +103,7 @@ export function AdminProductsPage() {
           <thead>
             <tr>
               <th scope="col" className={th}>Produit</th>
+              <th scope="col" className={th}>Référence</th>
               <th scope="col" className={th}>Catégorie</th>
               <th scope="col" className={`${th} text-right`}>Prix</th>
               <th scope="col" className={`${th} text-right`}>Stock</th>
@@ -113,11 +118,18 @@ export function AdminProductsPage() {
                 <td className={td}>
                   <div className="flex items-center gap-3">
                     <ProductThumbnail product={product} className="size-10 shrink-0 rounded-lg text-xl" />
-                    <b className="font-semibold">{product.name}</b>
+                    <span>
+                      <b className="block font-semibold">{product.name}</b>
+                      {product.brand && <span className="text-xs text-stone-600">{product.brand}</span>}
+                    </span>
                   </div>
                 </td>
+                <td className={`${td} font-mono text-[13px]`}>{product.sku}</td>
                 <td className={td}>{product.categoryName}</td>
-                <td className={`${td} text-right font-semibold tabular-nums`}>{formatPrice(product.price)}</td>
+                <td className={`${td} text-right tabular-nums`}>
+                  <b className="font-semibold">{formatPrice(product.price)}</b>
+                  {product.discountPercent !== null && <span className="block text-xs font-semibold text-bissap">Promo −{product.discountPercent} %</span>}
+                </td>
                 <td className={`${td} text-right tabular-nums ${product.stock < 10 ? 'font-semibold text-bissap' : ''}`}>{product.stock}</td>
                 <td className={td}>{product.images.length === 0 ? <span className="font-medium text-safran-ink">Aucune</span> : `${product.images.length} / 8`}</td>
                 <td className={td}>
