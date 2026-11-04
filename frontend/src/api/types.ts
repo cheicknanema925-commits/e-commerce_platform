@@ -15,6 +15,12 @@ export type Product = {
   categoryId: number
   categoryName: string
   images: ProductImage[]
+  // Fabricant (facultatif) et référence interne unique (SKU)
+  brand: string | null
+  sku: string
+  // Prix barré et remise calculée par le serveur (null sans promotion)
+  compareAtPrice: number | null
+  discountPercent: number | null
 }
 
 export type Category = {
@@ -84,6 +90,8 @@ export type Order = {
   status: OrderStatus
   paymentMethod: PaymentMethod
   totalAmount: number
+  // Frais de service (espèces à la livraison), déjà inclus dans totalAmount
+  serviceFee: number
   createdAt: string
   items: OrderItem[]
 }
@@ -99,6 +107,9 @@ export type Delivery = {
   longitude: number | null
   shippedAt: string | null
   deliveredAt: string | null
+  // Livreur : visible par le client une fois le colis parti
+  courierName: string | null
+  courierPhone: string | null
 }
 
 export type DeliveryAddress = {
@@ -121,6 +132,39 @@ export type AdminOrder = Order & {
   customerName: string
   customerEmail: string
   nextStatuses: OrderStatus[]
+  courierId: number | null
+  courierName: string | null
+}
+
+export type Courier = {
+  id: number
+  name: string
+  phone: string
+  active: boolean
+  ongoingDeliveries: number
+}
+
+export type CourierInput = {
+  name: string
+  phone: string
+  active: boolean
+}
+
+// Paramètres de la boutique (publics : la page de commande en a besoin). codZones vide = partout
+export type StoreSettings = {
+  storeName: string
+  supportEmail: string
+  onlinePaymentEnabled: boolean
+  codEnabled: boolean
+  codMaxAmount: number | null
+  codFee: number
+  codZones: string[]
+}
+
+export type Subscriber = {
+  id: number
+  email: string
+  createdAt: string
 }
 
 // Montants « encaissés » = paiements réussis (en ligne confirmés + espèces reçues à la livraison)
@@ -172,6 +216,10 @@ export type ProductInput = {
   description: string | null
   price: number
   stock: number
+  brand: string | null
+  // null = référence générée par le serveur
+  sku: string | null
+  compareAtPrice: number | null
 }
 
 // Format d'erreur standard de l'API (RFC 9457), produit par GlobalExceptionHandler

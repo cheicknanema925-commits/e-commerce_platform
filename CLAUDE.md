@@ -53,8 +53,10 @@ java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod  
   icônes seules sur mobile), sous `RequireAuth` + `RequireAdmin` ; pages Vue d'ensemble, Produits, Ajouter un article
   (photos choisies avant l'enregistrement, envoyées juste après), Commandes (changement de statut limité aux
   `nextStatuses` de l'API), Paiements (espèces à récupérer), Analyse des ventes, Clients ; briques dans `components/admin/ui.tsx`
-- Éléments des maquettes non repris faute de données réelles : favoris, infolettre, prix barré/promotions, marque, référence,
-  livreurs, paramètres, export ; à ajouter comme vraies fonctionnalités si besoin
+- Favoris (cœur, `FavoriteButton`, mise à jour optimiste), promotions (`/?promo=1`, prix barré), infolettre (accueil,
+  `/desinscription?jeton=`), page de commande pilotée par les paramètres publics (`lib/checkout.ts`) ; admin : Livreurs,
+  Infolettre, Paramètres, boutons « Exporter » (`apiDownload` : fichier récupéré avec le jeton puis enregistré)
+- `vite.config.ts` : `API_URL` (facultatif) change la cible du proxy (défaut `http://localhost:8080`)
 - Graphiques : SVG écrit à la main (`components/admin/SalesChart.tsx`), une couleur par série, info-bulle au survol ET
   au clavier, tableau des données à côté ; pas de bibliothèque de graphiques
 - Tableaux qui défilent : conteneur `relative overflow-x-auto` (sinon les libellés `sr-only` élargissent la page)
@@ -129,6 +131,25 @@ java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod  
 - Statistiques : panier moyen, ventes par catégorie, clients fidèles (≥ 2 commandes), espèces à récupérer
   (commandes en espèces ni livrées ni annulées) ; `GET /api/admin/orders?status=CREATED,PREPARING` accepte plusieurs statuts
 - Recherche texte : `common/LikePatterns.contains` (échappe `%` et `_`) pour tous les LIKE
+
+## Boutique : fiche produit, favoris, infolettre, livreurs, paramètres, exports
+
+- Produit : `brand` (facultatif), `sku` (référence unique, `SHA-` + 8 caractères générés si vide, majuscules),
+  `compareAtPrice` (prix barré > prix, vérifié par le code ET un `CHECK` en base) ; `discountPercent` calculé par le
+  serveur (arrondi inférieur) ; `GET /api/products?promo=true` ; recherche sur nom, marque et référence
+- Package `favorite` : table `favorites` (clé primaire composée, `ON DELETE CASCADE`), `PUT`/`DELETE /api/favorites/{id}`
+  idempotents, `GET /api/favorites` et `/ids`
+- Package `newsletter` : inscription publique limitée en débit, même réponse inscrit ou non (anti-énumération),
+  `INSERT … ON CONFLICT DO NOTHING`, désinscription par jeton secret (POST, jamais un simple lien GET) ; message de
+  bienvenue via `NotificationSender` (logs pour l'instant) ; `GET /api/admin/newsletter` sans le jeton
+- Livreurs (`order/Courier`, `deliveries.courier_id`) : jamais supprimés, désactivés ; affectation
+  `PUT /api/admin/orders/{id}/courier` refusée pour un livreur inactif ou une commande terminée (409) ; le client voit
+  son livreur seulement une fois le colis expédié (`DeliveryResponse.forCustomer`)
+- Package `store` : `store_settings` (une ligne, `id = 1`) ; `GET /api/store/settings` public, `PUT /api/admin/settings` ;
+  appliqués par `OrderService.checkout` (paiement en ligne/espèces activé, plafond, villes desservies sans accents ni
+  majuscules) ; frais de service figés dans `orders.service_fee` et inclus dans le total ; `order` dépend de `store`
+- Exports CSV `GET /api/admin/exports/{products|orders|customers|newsletter}.csv` : `common/CsvWriter` (BOM UTF-8,
+  `;`, CRLF, cellules commençant par `= + - @` préfixées d'une apostrophe contre l'injection de formule), pages de 500
 
 ## Photos des produits
 

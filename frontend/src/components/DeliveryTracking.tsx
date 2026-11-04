@@ -48,6 +48,17 @@ export function DeliveryTracking({ delivery }: { delivery: Delivery }) {
           )
         })}
       </ol>
+      {delivery.courierName && (
+        <p className="mt-6 flex flex-wrap items-center gap-2 rounded-lg bg-brand-50 p-3 text-sm">
+          <Icon name="truck" className="size-5 text-brand-700" />
+          Votre livreur : <b className="font-semibold">{delivery.courierName}</b>
+          {delivery.courierPhone && (
+            <a href={`tel:${delivery.courierPhone.replace(/\s/g, '')}`} className="font-semibold text-brand-700 underline">
+              {delivery.courierPhone}
+            </a>
+          )}
+        </p>
+      )}
       <dl className="mt-6 grid gap-3 border-t border-stone-200 pt-5 text-sm text-stone-700 sm:grid-cols-3">
         <div>
           <dt className="font-semibold text-stone-900">Adresse</dt>

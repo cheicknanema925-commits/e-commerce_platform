@@ -1,18 +1,24 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   type AdminOrderFilters,
+  assignCourier,
   changeOrderStatus,
+  createCourier,
   createProduct,
   deleteProduct,
   deleteProductImage,
   fetchAdminDelivery,
   fetchAdminOrder,
   fetchAdminOrders,
+  fetchCouriers,
   fetchCustomers,
   fetchSales,
   fetchStats,
+  fetchSubscribers,
   makeMainProductImage,
+  updateCourier,
   updateProduct,
+  updateStoreSettings,
   uploadProductImage,
 } from '../api/admin.ts'
 import type { SalesPeriod } from '../api/types.ts'
@@ -103,4 +109,37 @@ export function useMakeMainProductImage() {
 
 export function useDeleteProductImage() {
   return useProductMutation(deleteProductImage)
+}
+
+export function useCouriers() {
+  return useQuery({ queryKey: ['admin', 'couriers'], queryFn: fetchCouriers })
+}
+
+function useCourierMutation<V, R>(mutationFn: (variables: V) => Promise<R>) {
+  const queryClient = useQueryClient()
+  return useMutation({ mutationFn, onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin'] }) })
+}
+
+export function useCreateCourier() {
+  return useCourierMutation(createCourier)
+}
+
+export function useUpdateCourier() {
+  return useCourierMutation(updateCourier)
+}
+
+export function useAssignCourier() {
+  return useCourierMutation(assignCourier)
+}
+
+export function useUpdateStoreSettings() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: updateStoreSettings,
+    onSuccess: (settings) => queryClient.setQueryData(['store-settings'], settings),
+  })
+}
+
+export function useSubscribers(page: number) {
+  return useQuery({ queryKey: ['admin', 'subscribers', page], queryFn: () => fetchSubscribers(page), placeholderData: keepPreviousData })
 }

@@ -22,7 +22,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 // Étape 9 : derrière Caddy, getRemoteAddr() sera l'IP du proxy → configurer les en-têtes X-Forwarded-For de confiance.
 class AuthRateLimitFilter extends OncePerRequestFilter {
 
-	private static final Set<String> PROTECTED_PATHS = Set.of("/api/auth/login", "/api/auth/register");
+	private static final Set<String> PROTECTED_PATHS = Set.of("/api/auth/login", "/api/auth/register",
+			"/api/newsletter/subscriptions", "/api/newsletter/unsubscribe");
 
 	private static final Duration WINDOW = Duration.ofMinutes(1);
 

@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from
 import { useAuth } from '../auth/useAuth.ts'
 import { useCategories } from '../hooks/useCatalog.ts'
 import { useCart } from '../hooks/useCart.ts'
+import { useFavoriteIds, useStoreSettings } from '../hooks/useShop.ts'
 import { CartDrawer } from './CartDrawer.tsx'
 import { Icon } from './Icon.tsx'
 import { Logo } from './Logo.tsx'
@@ -21,6 +22,10 @@ export function Layout() {
   const cartCount = cart.data?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0
   const onCatalog = location.pathname === '/'
   const currentCategory = onCatalog ? searchParams.get('category') : null
+  const onPromotions = onCatalog && searchParams.get('promo') === '1'
+  const favorites = useFavoriteIds()
+  const settings = useStoreSettings()
+  const favoriteCount = favorites.data?.length ?? 0
 
   function onSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -33,9 +38,12 @@ export function Layout() {
     navigate('/')
   }
 
-  const categoryLinkClass = (active: boolean) =>
+  // promo : le lien « Promotions » garde sa couleur bissap tant qu'il n'est pas sélectionné
+  const categoryLinkClass = (active: boolean, promo = false) =>
     `border-b-3 px-3.5 py-3 text-sm font-medium whitespace-nowrap ${
-      active ? 'border-safran font-semibold text-brand-700' : 'border-transparent text-stone-600 hover:text-stone-900'
+      active
+        ? 'border-safran font-semibold text-brand-700'
+        : `border-transparent ${promo ? 'text-bissap' : 'text-stone-600 hover:text-stone-900'}`
     }`
 
   return (
@@ -66,7 +74,7 @@ export function Layout() {
           <form
             role="search"
             onSubmit={onSearch}
-            className="order-3 flex w-full min-w-0 items-center rounded-full border-2 border-transparent bg-stone-100 py-1 pr-1 pl-4 transition focus-within:border-brand-700 focus-within:bg-white md:order-none md:max-w-[640px] md:flex-1"
+            className="order-3 flex w-full min-w-0 items-center rounded-full border-2 border-transparent bg-stone-100 py-1 pr-1 pl-4 transition focus-within:border-brand-700 focus-within:bg-white md:order-none md:max-w-[640px] md:min-w-56 md:flex-1"
           >
             <label htmlFor="recherche" className="sr-only">
               Rechercher un produit
@@ -91,24 +99,34 @@ export function Layout() {
             {status === 'authenticated' ? (
               <>
                 {user?.role === 'ADMIN' && (
-                  <Link to="/admin" className={actionClass}>
+                  <Link to="/admin" className={actionClass} title="Administration">
                     <Icon name="dashboard" className="size-[22px]" />
-                    <span className="hidden lg:inline">Administration</span>
-                    <span className="sr-only lg:hidden">Administration</span>
+                    <span className="hidden 2xl:inline">Administration</span>
+                    <span className="sr-only 2xl:hidden">Administration</span>
                   </Link>
                 )}
+                <NavLink to="/favoris" className={actionClass} title="Mes favoris">
+                  <Icon name="heart" className="size-[22px]" />
+                  <span className="hidden 2xl:inline">Favoris</span>
+                  <span className="sr-only 2xl:hidden">Favoris</span>
+                  {favoriteCount > 0 && (
+                    <span className="absolute top-0.5 left-6 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-safran px-1.5 text-[11px] font-bold text-stone-900">
+                      {favoriteCount}
+                    </span>
+                  )}
+                </NavLink>
                 <NavLink to="/commandes" className={actionClass}>
                   <Icon name="bag" className="size-[22px]" />
                   <span className="hidden lg:inline">Mes commandes</span>
                   <span className="sr-only lg:hidden">Mes commandes</span>
                 </NavLink>
-                <span className="hidden px-2 text-sm text-stone-600 xl:inline">
+                <span className="hidden px-2 text-sm text-stone-600 2xl:inline">
                   Bonjour, <b className="font-semibold text-stone-900">{user?.fullName.split(' ')[0]}</b>
                 </span>
-                <button type="button" onClick={onLogout} className={actionClass}>
+                <button type="button" onClick={onLogout} className={actionClass} title="Déconnexion">
                   <Icon name="logout" className="size-[22px]" />
-                  <span className="hidden lg:inline">Déconnexion</span>
-                  <span className="sr-only lg:hidden">Déconnexion</span>
+                  <span className="hidden 2xl:inline">Déconnexion</span>
+                  <span className="sr-only 2xl:hidden">Déconnexion</span>
                 </button>
                 <button type="button" onClick={() => setCartOpen(true)} className={actionClass}>
                   <Icon name="cart" className="size-[22px]" />
@@ -142,7 +160,11 @@ export function Layout() {
 
         <nav aria-label="Rayons" className="border-t border-stone-200">
           <div className="mx-auto flex max-w-[1200px] gap-1 overflow-x-auto px-4 [scrollbar-width:none] sm:px-6">
-            <Link to="/" aria-current={onCatalog && !currentCategory ? 'page' : undefined} className={categoryLinkClass(onCatalog && !currentCategory)}>
+            <Link
+              to="/"
+              aria-current={onCatalog && !currentCategory && !onPromotions ? 'page' : undefined}
+              className={categoryLinkClass(onCatalog && !currentCategory && !onPromotions)}
+            >
               Tous les produits
             </Link>
             {categories.data?.map((category) => (
@@ -155,6 +177,13 @@ export function Layout() {
                 {category.name}
               </Link>
             ))}
+            <Link
+              to="/?promo=1"
+              aria-current={onPromotions ? 'page' : undefined}
+              className={categoryLinkClass(onPromotions, true)}
+            >
+              Promotions
+            </Link>
           </div>
         </nav>
       </header>
@@ -168,6 +197,12 @@ export function Layout() {
           <div>
             <Logo dark />
             <p className="mt-3">Le marché du quotidien, en ligne. Des produits utiles, des prix clairs, une livraison suivie.</p>
+            {settings.data && (
+              <a href={`mailto:${settings.data.supportEmail}`} className="mt-3 inline-flex items-center gap-2 hover:text-white hover:underline">
+                <Icon name="mail" className="size-4" />
+                {settings.data.supportEmail}
+              </a>
+            )}
           </div>
           <div>
             <h3 className="mb-2.5 text-[15px] font-semibold text-white">Shop Africa</h3>
@@ -198,14 +233,18 @@ export function Layout() {
           <div>
             <h3 className="mb-2.5 text-[15px] font-semibold text-white">Paiement</h3>
             <ul className="space-y-1.5">
-              <li>Wave</li>
-              <li>Orange Money</li>
-              <li>Carte bancaire</li>
-              <li>Espèces à la livraison</li>
+              {settings.data?.onlinePaymentEnabled !== false && (
+                <>
+                  <li>Wave</li>
+                  <li>Orange Money</li>
+                  <li>Carte bancaire</li>
+                </>
+              )}
+              {settings.data?.codEnabled !== false && <li>Espèces à la livraison</li>}
             </ul>
           </div>
         </div>
-        <div className="mx-auto max-w-[1200px] border-t border-white/10 px-4 pt-4 pb-5 text-[13px] sm:px-6">© 2026 Shop Africa</div>
+        <div className="mx-auto max-w-[1200px] border-t border-white/10 px-4 pt-4 pb-5 text-[13px] sm:px-6">© 2026 {settings.data?.storeName ?? 'Shop Africa'}</div>
       </footer>
 
       {status === 'authenticated' && <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />}

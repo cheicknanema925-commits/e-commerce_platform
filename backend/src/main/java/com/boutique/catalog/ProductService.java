@@ -1,6 +1,7 @@
 package com.boutique.catalog;
 
 import java.util.List;
+import java.util.Locale;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -27,9 +28,10 @@ public class ProductService {
 		this.events = events;
 	}
 
-	public PageResponse<ProductResponse> findAll(String categorySlug, String search, Pageable pageable) {
-		Page<Product> products = productRepository.findAll(ProductSpecifications.matching(categorySlug, search),
-				pageable);
+	public PageResponse<ProductResponse> findAll(String categorySlug, String search, boolean promotionsOnly,
+			Pageable pageable) {
+		Page<Product> products = productRepository
+			.findAll(ProductSpecifications.matching(categorySlug, search, promotionsOnly), pageable);
 		return PageResponse.from(products.map(ProductResponse::from));
 	}
 
@@ -41,6 +43,11 @@ public class ProductService {
 	public ProductResponse create(ProductRequest request) {
 		Product product = new Product(getCategory(request.categoryId()), request.name(), request.description(),
 				request.price(), request.stock());
+		String sku = normalizeSku(request.sku());
+		if (sku != null && productRepository.existsBySku(sku)) {
+			throw new DuplicateSkuException(sku);
+		}
+		product.updateMerchandising(blankToNull(request.brand()), sku, request.compareAtPrice());
 		return ProductResponse.from(productRepository.save(product));
 	}
 
@@ -49,6 +56,11 @@ public class ProductService {
 		Product product = getProduct(id);
 		product.update(getCategory(request.categoryId()), request.name(), request.description(), request.price(),
 				request.stock());
+		String sku = normalizeSku(request.sku());
+		if (sku != null && productRepository.existsBySkuAndIdNot(sku, id)) {
+			throw new DuplicateSkuException(sku);
+		}
+		product.updateMerchandising(blankToNull(request.brand()), sku, request.compareAtPrice());
 		// Pas de save() : le produit est suivi par le contexte de persistance, l'UPDATE part au commit
 		return ProductResponse.from(product);
 	}
@@ -60,6 +72,16 @@ public class ProductService {
 		List<String> filenames = product.getImages().stream().map(ProductImage::getFilename).toList();
 		productRepository.delete(product);
 		events.publishEvent(new ProductImagesDeletedEvent(filenames));
+	}
+
+	// Référence en majuscules, sans espaces autour ; vide = laissée au serveur
+	private static String normalizeSku(String sku) {
+		String value = blankToNull(sku);
+		return (value == null) ? null : value.toUpperCase(Locale.ROOT);
+	}
+
+	private static String blankToNull(String value) {
+		return (value == null || value.isBlank()) ? null : value.strip();
 	}
 
 	private Product getProduct(Long id) {

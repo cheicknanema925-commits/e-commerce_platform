@@ -46,7 +46,7 @@ class ProductControllerTest {
 	@Test
 	void anyoneCanReadProducts() throws Exception {
 		when(productService.findById(1L))
-			.thenReturn(new ProductResponse(1L, "Boubou bazin", null, null, 5, 1L, "Mode", List.of()));
+			.thenReturn(new ProductResponse(1L, "Boubou bazin", null, null, 5, 1L, "Mode", List.of(), null, "SHA-0001", null, null));
 
 		mockMvc.perform(get("/api/products/1")).andExpect(status().isOk());
 	}

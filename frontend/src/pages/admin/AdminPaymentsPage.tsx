@@ -4,6 +4,7 @@ import { ErrorMessage } from '../../components/ErrorMessage.tsx'
 import { Icon } from '../../components/Icon.tsx'
 import { OrderStatusBadge } from '../../components/OrderStatusBadge.tsx'
 import { Pagination } from '../../components/Pagination.tsx'
+import { CourierSelect } from '../../components/admin/CourierSelect.tsx'
 import { AmountKpi, BarList, btnGhost, Kpi, KpiStrip, PageHeader, Panel, TableCard, td, th } from '../../components/admin/ui.tsx'
 import { useAdminOrders, useStats } from '../../hooks/useAdmin.ts'
 import { cashState } from '../../lib/admin.ts'
@@ -94,6 +95,7 @@ export function AdminPaymentsPage() {
                   <th scope="col" className={th}>Commande</th>
                   <th scope="col" className={th}>Client</th>
                   <th scope="col" className={`${th} text-right`}>Montant</th>
+                  <th scope="col" className={th}>Livreur</th>
                   <th scope="col" className={th}>Statut</th>
                   <th scope="col" className={th}>Encaissement</th>
                 </tr>
@@ -110,6 +112,9 @@ export function AdminPaymentsPage() {
                       </td>
                       <td className={td}>{order.customerName}</td>
                       <td className={`${td} text-right font-semibold tabular-nums`}>{formatPrice(order.totalAmount)}</td>
+                      <td className={td}>
+                        <CourierSelect order={order} />
+                      </td>
                       <td className={td}>
                         <OrderStatusBadge status={order.status} paymentMethod={order.paymentMethod} />
                       </td>
@@ -134,7 +139,7 @@ export function AdminPaymentsPage() {
           )}
         </div>
 
-        <div className="mt-4.5">
+        <div className="mt-4.5 flex flex-col gap-4">
           <Panel title="Répartition des encaissements">
             <BarList
               rows={[
@@ -145,6 +150,12 @@ export function AdminPaymentsPage() {
             <p className="mt-4 text-[13px] text-stone-600">
               Le détail par opérateur (Wave, Orange Money, carte) sera disponible avec l’intégration réelle de PayDunya.
             </p>
+          </Panel>
+          <Panel title="Réglages">
+            <p className="text-sm text-stone-600">Activer les moyens de paiement, plafond et frais des espèces, villes desservies.</p>
+            <Link to="/admin/parametres" className="mt-3 inline-block text-sm font-semibold text-brand-700 underline underline-offset-3">
+              Ouvrir les paramètres
+            </Link>
           </Panel>
         </div>
       </div>

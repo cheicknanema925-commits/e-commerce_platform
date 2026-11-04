@@ -8,8 +8,9 @@ export default defineConfig({
   server: {
     // Le navigateur appelle /api sur ce serveur, qui relaie vers Spring Boot : une seule origine,
     // donc pas besoin d'ouvrir CORS côté API (en production, Caddy jouera ce rôle à l'étape 9)
+    // API_URL (facultatif) : viser une autre API que celle du port 8080 (tests, Docker)
     proxy: {
-      '/api': 'http://localhost:8080',
+      '/api': process.env.API_URL ?? 'http://localhost:8080',
     },
   },
 })

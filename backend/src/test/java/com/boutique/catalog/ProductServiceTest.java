@@ -63,7 +63,7 @@ class ProductServiceTest {
 	}
 
 	private static ProductRequest request(Long categoryId, String name, String price) {
-		return new ProductRequest(categoryId, name, null, new BigDecimal(price), 10);
+		return new ProductRequest(categoryId, name, null, new BigDecimal(price), 10, null, null, null);
 	}
 
 }

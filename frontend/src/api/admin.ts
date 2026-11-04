@@ -1,8 +1,10 @@
-import { apiGet, apiRequest } from './client.ts'
+import { apiDownload, apiGet, apiRequest } from './client.ts'
 import type {
   AdminCustomer,
   AdminOrder,
   AdminStats,
+  Courier,
+  CourierInput,
   Delivery,
   OrderStatus,
   Page,
@@ -11,6 +13,8 @@ import type {
   ProductInput,
   SalesPeriod,
   SalesReport,
+  StoreSettings,
+  Subscriber,
 } from './types.ts'
 
 // Routes /api/admin/** : l'API vérifie le rôle ADMIN à chaque appel (le masquage des menus n'est qu'un confort)
@@ -77,4 +81,35 @@ export function makeMainProductImage(input: { productId: number; imageId: number
 
 export function deleteProductImage(input: { productId: number; imageId: number }): Promise<void> {
   return apiRequest('DELETE', `/products/${input.productId}/images/${input.imageId}`)
+}
+
+export function fetchCouriers(): Promise<Courier[]> {
+  return apiGet('/admin/couriers')
+}
+
+export function createCourier(courier: CourierInput): Promise<Courier> {
+  return apiRequest('POST', '/admin/couriers', { body: courier })
+}
+
+export function updateCourier(input: { id: number; courier: CourierInput }): Promise<Courier> {
+  return apiRequest('PUT', `/admin/couriers/${input.id}`, { body: input.courier })
+}
+
+// courierId null = retirer le livreur de la commande
+export function assignCourier(input: { orderId: number; courierId: number | null }): Promise<void> {
+  return apiRequest('PUT', `/admin/orders/${input.orderId}/courier`, { body: { courierId: input.courierId } })
+}
+
+export function updateStoreSettings(settings: StoreSettings): Promise<StoreSettings> {
+  return apiRequest('PUT', '/admin/settings', { body: settings })
+}
+
+export function fetchSubscribers(page: number): Promise<Page<Subscriber>> {
+  return apiGet('/admin/newsletter', { page, size: 20 })
+}
+
+export type ExportName = 'products' | 'orders' | 'customers' | 'newsletter'
+
+export function downloadExport(name: ExportName): Promise<void> {
+  return apiDownload(`/admin/exports/${name}.csv`, `${name}.csv`)
 }

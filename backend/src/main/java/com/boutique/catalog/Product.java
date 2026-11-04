@@ -1,10 +1,13 @@
 package com.boutique.catalog;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
@@ -16,6 +19,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
@@ -46,6 +50,15 @@ public class Product {
 
 	private int stock;
 
+	// Fabricant (Samsung, Nike…), facultatif
+	private String brand;
+
+	// Référence interne unique (SKU) : générée si l'admin n'en donne pas
+	private String sku;
+
+	// Prix barré (prix avant remise) : null = pas de promotion
+	private BigDecimal compareAtPrice;
+
 	// Verrouillage optimiste : Hibernate vérifie et incrémente ce numéro à chaque UPDATE
 	@Version
 	private long version;
@@ -71,6 +84,37 @@ public class Product {
 
 	public Product(Category category, String name, String description, BigDecimal price, int stock) {
 		update(category, name, description, price, stock);
+	}
+
+	// Référence générée au premier enregistrement si l'admin n'en a pas saisi : SHA- + 8 caractères aléatoires
+	@PrePersist
+	void generateSkuIfMissing() {
+		if (sku == null) {
+			sku = "SHA-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT);
+		}
+	}
+
+	// Marque, référence et prix barré ; la référence n'est changée que si une nouvelle est fournie
+	public void updateMerchandising(String brand, String sku, BigDecimal compareAtPrice) {
+		if (compareAtPrice != null && compareAtPrice.compareTo(price) <= 0) {
+			throw new InvalidPromotionException();
+		}
+		this.brand = brand;
+		if (sku != null) {
+			this.sku = sku;
+		}
+		this.compareAtPrice = compareAtPrice;
+	}
+
+	// Remise en pourcentage, arrondie à l'entier inférieur (jamais annoncer plus que la vraie remise) ; null sans promotion
+	public Integer getDiscountPercent() {
+		if (compareAtPrice == null) {
+			return null;
+		}
+		return BigDecimal.ONE.subtract(price.divide(compareAtPrice, 4, RoundingMode.HALF_UP))
+			.multiply(BigDecimal.valueOf(100))
+			.setScale(0, RoundingMode.FLOOR)
+			.intValue();
 	}
 
 	public void update(Category category, String name, String description, BigDecimal price, int stock) {
@@ -157,6 +201,18 @@ public class Product {
 	// URL de la photo principale, ou null si le produit n'a pas encore de photo
 	public String getMainImageUrl() {
 		return images.isEmpty() ? null : images.getFirst().getUrl();
+	}
+
+	public String getBrand() {
+		return brand;
+	}
+
+	public String getSku() {
+		return sku;
+	}
+
+	public BigDecimal getCompareAtPrice() {
+		return compareAtPrice;
 	}
 
 	public List<ProductImage> getImages() {
