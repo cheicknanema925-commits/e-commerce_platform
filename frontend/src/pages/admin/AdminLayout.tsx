@@ -20,7 +20,15 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
       { to: '/admin/analyse', label: 'Analyse des ventes', icon: 'chart' },
     ],
   },
-  { title: 'Gestion', items: [{ to: '/admin/clients', label: 'Clients', icon: 'users' }] },
+  {
+    title: 'Gestion',
+    items: [
+      { to: '/admin/clients', label: 'Clients', icon: 'users' },
+      { to: '/admin/infolettre', label: 'Infolettre', icon: 'mail' },
+      { to: '/admin/livreurs', label: 'Livreurs', icon: 'truck' },
+      { to: '/admin/parametres', label: 'Paramètres', icon: 'settings' },
+    ],
+  },
 ]
 
 // Fil d'Ariane de la barre du haut : le libellé de la rubrique la plus précise qui correspond à l'adresse

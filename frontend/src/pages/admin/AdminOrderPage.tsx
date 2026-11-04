@@ -4,6 +4,7 @@ import { DeliveryTracking } from '../../components/DeliveryTracking.tsx'
 import { ErrorMessage } from '../../components/ErrorMessage.tsx'
 import { OrderStatusBadge } from '../../components/OrderStatusBadge.tsx'
 import { PaymentCell } from '../../components/admin/PaymentCell.tsx'
+import { CourierSelect } from '../../components/admin/CourierSelect.tsx'
 import { btnGhost, PageHeader, Panel } from '../../components/admin/ui.tsx'
 import { useAdminDelivery, useAdminOrder, useChangeOrderStatus } from '../../hooks/useAdmin.ts'
 import { formatDate, formatPrice } from '../../lib/format.ts'
@@ -63,6 +64,12 @@ export function AdminOrderPage() {
                 </li>
               ))}
             </ul>
+            {order.data.serviceFee > 0 && (
+              <p className="mt-3 flex justify-between border-t border-stone-200 pt-3 text-sm">
+                <span>Frais de service (espèces)</span>
+                <span className="tabular-nums">{formatPrice(order.data.serviceFee)}</span>
+              </p>
+            )}
             <p className="mt-3 flex justify-between border-t border-stone-200 pt-3 text-lg font-bold">
               <span>Total</span>
               <span>{formatPrice(totalAmount)}</span>
@@ -102,6 +109,11 @@ export function AdminOrderPage() {
             <div aria-live="polite" className="mt-3">
               {changeStatus.isError && <ErrorMessage error={changeStatus.error} />}
             </div>
+          </Panel>
+
+          <Panel title="Livreur">
+            <CourierSelect order={order.data} />
+            <p className="mt-2 text-[13px] text-stone-600">Le client voit son livreur (nom et téléphone) dès que la commande est expédiée.</p>
           </Panel>
 
           <Panel title="Client">

@@ -14,6 +14,7 @@ import com.boutique.TestcontainersConfiguration;
 import com.boutique.common.PageResponse;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
@@ -60,7 +61,7 @@ class ProductServiceIntegrationTests {
 		productService.create(request(modeId, "Pagne wax", "12000"));
 		productService.create(request(categoryId("beaute"), "Beurre de karité", "3000"));
 
-		PageResponse<ProductResponse> page = productService.findAll("mode", null, PageRequest.of(0, 2, Sort.by("price")));
+		PageResponse<ProductResponse> page = productService.findAll("mode", null, false, PageRequest.of(0, 2, Sort.by("price")));
 
 		assertThat(page.totalElements()).isEqualTo(3);
 		assertThat(page.totalPages()).isEqualTo(2);
@@ -73,10 +74,57 @@ class ProductServiceIntegrationTests {
 		productService.create(request(modeId, "Boubou bazin", "25000"));
 		productService.create(request(modeId, "Pagne wax", "12000"));
 
-		assertThat(productService.findAll(null, "BAZIN", PageRequest.of(0, 10)).content()).extracting(ProductResponse::name)
+		assertThat(productService.findAll(null, "BAZIN", false, PageRequest.of(0, 10)).content()).extracting(ProductResponse::name)
 			.containsExactly("Boubou bazin");
 		// « % » est cherché comme un caractère, pas comme un joker qui renverrait tout le catalogue
-		assertThat(productService.findAll(null, "%", PageRequest.of(0, 10)).content()).isEmpty();
+		assertThat(productService.findAll(null, "%", false, PageRequest.of(0, 10)).content()).isEmpty();
+	}
+
+	@Test
+	void skuIsGeneratedWhenMissingAndMustBeUnique() {
+		Long modeId = categoryId("mode");
+		ProductResponse generated = productService.create(request(modeId, "Boubou bazin", "25000"));
+		ProductResponse chosen = productService
+			.create(new ProductRequest(modeId, "Pagne wax", null, new BigDecimal("12000"), 5, "Vlisco", " wax-01 ", null));
+
+		assertThat(generated.sku()).matches("SHA-[0-9A-F]{8}");
+		// Référence saisie : espaces retirés, mise en majuscules
+		assertThat(chosen.sku()).isEqualTo("WAX-01");
+		assertThat(chosen.brand()).isEqualTo("Vlisco");
+		assertThatThrownBy(() -> productService
+			.create(new ProductRequest(modeId, "Autre pagne", null, new BigDecimal("9000"), 5, null, "WAX-01", null)))
+			.isInstanceOf(DuplicateSkuException.class);
+	}
+
+	@Test
+	void promotionShowsTheDiscountAndCanBeFiltered() {
+		Long modeId = categoryId("mode");
+		productService
+			.create(new ProductRequest(modeId, "Sandales cuir", null, new BigDecimal("8000"), 5, null, null, new BigDecimal("10000")));
+		productService.create(request(modeId, "Pagne wax", "12000"));
+
+		PageResponse<ProductResponse> promotions = productService.findAll(null, null, true, PageRequest.of(0, 10));
+
+		assertThat(promotions.content()).extracting(ProductResponse::name).containsExactly("Sandales cuir");
+		assertThat(promotions.content().getFirst().discountPercent()).isEqualTo(20);
+	}
+
+	// Prix barré inférieur ou égal au prix de vente : refusé par le code (message clair) avant la contrainte en base
+	@Test
+	void compareAtPriceMustBeHigherThanThePrice() {
+		Long modeId = categoryId("mode");
+		assertThatThrownBy(() -> productService
+			.create(new ProductRequest(modeId, "Pagne wax", null, new BigDecimal("12000"), 5, null, null, new BigDecimal("12000"))))
+			.isInstanceOf(InvalidPromotionException.class);
+	}
+
+	@Test
+	void searchAlsoLooksAtBrandAndSku() {
+		Long modeId = categoryId("mode");
+		productService.create(new ProductRequest(modeId, "Pagne", null, new BigDecimal("12000"), 5, "Vlisco", "PAG-77", null));
+
+		assertThat(productService.findAll(null, "vlisco", false, PageRequest.of(0, 10)).content()).hasSize(1);
+		assertThat(productService.findAll(null, "pag-77", false, PageRequest.of(0, 10)).content()).hasSize(1);
 	}
 
 	private Long categoryId(String slug) {
@@ -84,7 +132,7 @@ class ProductServiceIntegrationTests {
 	}
 
 	private static ProductRequest request(Long categoryId, String name, String price) {
-		return new ProductRequest(categoryId, name, null, new BigDecimal(price), 10);
+		return new ProductRequest(categoryId, name, null, new BigDecimal(price), 10, null, null, null);
 	}
 
 }

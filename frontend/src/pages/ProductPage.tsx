@@ -2,12 +2,13 @@ import { Link, useParams } from 'react-router'
 import { ApiError } from '../api/client.ts'
 import { AddToCart } from '../components/AddToCart.tsx'
 import { ErrorMessage } from '../components/ErrorMessage.tsx'
+import { FavoriteButton } from '../components/FavoriteButton.tsx'
 import { Icon } from '../components/Icon.tsx'
 import { PriceTag } from '../components/PriceTag.tsx'
 import { ProductGallery } from '../components/ProductGallery.tsx'
 import { StarRating } from '../components/StarRating.tsx'
 import { useCategories, useProduct, useRating, useReviews } from '../hooks/useCatalog.ts'
-import { formatDate } from '../lib/format.ts'
+import { formatDate, formatPrice } from '../lib/format.ts'
 import { stockText } from '../lib/stock.ts'
 import { NotFoundPage } from './NotFoundPage.tsx'
 
@@ -28,7 +29,7 @@ export function ProductPage() {
     return <p className="text-stone-600">Chargement du produit…</p>
   }
 
-  const { name, categoryId, categoryName, description, price, stock } = product.data
+  const { name, categoryId, categoryName, description, price, stock, brand, sku, compareAtPrice, discountPercent } = product.data
   const slug = categories.data?.find((c) => c.id === categoryId)?.slug
   const stockInfo = stockText(stock)
   return (
@@ -60,7 +61,14 @@ export function ProductPage() {
       <article className="mt-5 grid gap-8 rounded-[18px] border border-stone-200 bg-white p-5 sm:p-8 md:grid-cols-2">
         <ProductGallery key={product.data.id} product={product.data} />
         <div>
-          <p className="text-sm text-stone-600">{categoryName}</p>
+          <p className="text-sm text-stone-600">
+            {brand && (
+              <>
+                Marque : <b className="font-semibold text-stone-900">{brand}</b> ·{' '}
+              </>
+            )}
+            {categoryName} · Réf. {sku}
+          </p>
           <h1 className="mt-1 text-[clamp(28px,3.4vw,40px)] leading-tight font-bold tracking-tight">{name}</h1>
           {rating.data && rating.data.count > 0 && (
             <p className="mt-2 flex items-center gap-2 text-sm text-stone-700">
@@ -70,11 +78,23 @@ export function ProductPage() {
               </a>
             </p>
           )}
-          <div className="mt-5">
+          <div className="mt-5 flex flex-wrap items-center gap-3">
             <PriceTag amount={price} size="lg" />
+            {compareAtPrice !== null && (
+              <>
+                <s className="text-lg text-stone-600">
+                  <span className="sr-only">Ancien prix : </span>
+                  {formatPrice(compareAtPrice)}
+                </s>
+                <span className="rounded-sm bg-bissap px-2 py-1 text-sm font-bold text-white">−{discountPercent} %</span>
+              </>
+            )}
           </div>
           <p className={`mt-3 font-medium ${stockInfo.className}`}>{stock > 5 ? `En stock (${stock} disponibles)` : stockInfo.text}</p>
           <AddToCart product={product.data} />
+          <div className="mt-3">
+            <FavoriteButton product={product.data} large />
+          </div>
 
           <ul className="mt-7 space-y-3 border-t border-stone-200 pt-5 text-sm text-stone-600">
             <li className="flex gap-3">

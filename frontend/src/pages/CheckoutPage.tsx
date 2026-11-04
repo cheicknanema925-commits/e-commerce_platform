@@ -8,6 +8,8 @@ import { FormField } from '../components/FormField.tsx'
 import { Icon, type IconName } from '../components/Icon.tsx'
 import { useCart } from '../hooks/useCart.ts'
 import { useCheckout, useStartPayment } from '../hooks/useOrders.ts'
+import { useStoreSettings } from '../hooks/useShop.ts'
+import { paymentAvailability, serviceFee } from '../lib/checkout.ts'
 import { formatPrice } from '../lib/format.ts'
 import { fieldErrors } from '../lib/forms.ts'
 import type { Position } from '../lib/location.ts'
@@ -32,7 +34,8 @@ export function CheckoutPage() {
   const checkout = useCheckout()
   const startPayment = useStartPayment()
   const navigate = useNavigate()
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('ONLINE')
+  const [chosenMethod, setPaymentMethod] = useState<PaymentMethod>('ONLINE')
+  const settings = useStoreSettings()
   const [position, setPosition] = useState<Position | null>(null)
   const errors = fieldErrors(checkout.error)
 
@@ -64,6 +67,18 @@ export function CheckoutPage() {
     }
   }
 
+  const cartTotal = cart.data?.total ?? 0
+  const availability = paymentAvailability(settings.data, cartTotal)
+  // Mode choisi indisponible (paramètres, plafond) : on bascule sur l'autre s'il est disponible
+  const paymentMethod: PaymentMethod = availability[chosenMethod].available
+    ? chosenMethod
+    : chosenMethod === 'ONLINE' && availability.CASH_ON_DELIVERY.available
+      ? 'CASH_ON_DELIVERY'
+      : chosenMethod === 'CASH_ON_DELIVERY' && availability.ONLINE.available
+        ? 'ONLINE'
+        : chosenMethod
+  const fee = serviceFee(settings.data, paymentMethod)
+  const noPayment = !availability.ONLINE.available && !availability.CASH_ON_DELIVERY.available
   const pending = checkout.isPending || startPayment.isPending
   const count = cart.data?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0
   return (
@@ -114,13 +129,14 @@ export function CheckoutPage() {
             {PAYMENT_OPTIONS.map((option) => (
               <label
                 key={option.method}
-                className="flex cursor-pointer items-start gap-3.5 rounded-lg border-2 border-stone-200 p-4 has-[:checked]:border-brand-700 has-[:checked]:bg-brand-50 has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-safran"
+                className="flex cursor-pointer items-start gap-3.5 rounded-lg border-2 border-stone-200 p-4 has-[:checked]:border-brand-700 has-[:checked]:bg-brand-50 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60 has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-safran"
               >
                 <input
                   type="radio"
                   name="paymentMethod"
                   value={option.method}
                   checked={paymentMethod === option.method}
+                  disabled={!availability[option.method].available}
                   onChange={() => setPaymentMethod(option.method)}
                   className="mt-1 size-[18px] accent-brand-700"
                 />
@@ -128,6 +144,15 @@ export function CheckoutPage() {
                 <span>
                   <b className="block font-semibold">{option.title}</b>
                   <span className="text-sm text-stone-600">{option.text}</span>
+                  {option.method === 'CASH_ON_DELIVERY' && availability.CASH_ON_DELIVERY.available && settings.data && (
+                    <span className="mt-1 block text-[13px] text-stone-600">
+                      {settings.data.codFee > 0 && `Frais de service : ${formatPrice(settings.data.codFee)}. `}
+                      {settings.data.codZones.length > 0 && `Villes desservies : ${settings.data.codZones.join(', ')}.`}
+                    </span>
+                  )}
+                  {!availability[option.method].available && (
+                    <span className="mt-1 block text-[13px] font-medium text-bissap">{availability[option.method].reason}</span>
+                  )}
                 </span>
               </label>
             ))}
@@ -149,19 +174,26 @@ export function CheckoutPage() {
               </li>
             ))}
           </ul>
-          <p className="mt-4 flex justify-between border-t border-stone-200 pt-4 text-lg font-bold">
+          {fee > 0 && (
+            <p className="mt-4 flex justify-between border-t border-stone-200 pt-3 text-sm">
+              <span>Frais de service (espèces)</span>
+              <span>{formatPrice(fee)}</span>
+            </p>
+          )}
+          <p className={`flex justify-between text-lg font-bold ${fee > 0 ? 'mt-2' : 'mt-4 border-t border-stone-200 pt-4'}`}>
             <span>
               Total ({count} article{count > 1 ? 's' : ''})
             </span>
-            <span>{formatPrice(cart.data?.total ?? 0)}</span>
+            <span>{formatPrice(cartTotal + fee)}</span>
           </p>
+          {noPayment && <p className="mt-3 text-sm font-medium text-bissap">Aucun moyen de paiement n'est disponible pour le moment.</p>}
           <div aria-live="polite" className="mt-4">
             {checkout.isError && Object.keys(errors).length === 0 && <ErrorMessage error={checkout.error} />}
             {startPayment.isError && <ErrorMessage error={startPayment.error} />}
           </div>
           <button
             type="submit"
-            disabled={pending}
+            disabled={pending || noPayment}
             className="mt-4 w-full rounded-full bg-safran py-3.5 font-bold text-stone-900 hover:bg-safran-light disabled:opacity-60"
           >
             {pending ? 'Validation…' : paymentMethod === 'ONLINE' ? 'Commander et payer' : 'Confirmer la commande'}

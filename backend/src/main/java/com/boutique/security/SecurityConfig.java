@@ -55,9 +55,11 @@ public class SecurityConfig {
 			// Règles lues dans l'ordre : la première qui correspond s'applique
 			.authorizeHttpRequests((auth) -> auth.requestMatchers("/api/auth/**")
 				.permitAll()
-				.requestMatchers(HttpMethod.GET, "/api/products/**", "/api/categories/**", "/api/images/**")
+				.requestMatchers(HttpMethod.GET, "/api/products/**", "/api/categories/**", "/api/images/**", "/api/store/settings")
 				.permitAll()
 				// Appelé par le fournisseur de paiement, sans jeton : l'authenticité est vérifiée dans PaymentService
+				.requestMatchers(HttpMethod.POST, "/api/newsletter/subscriptions", "/api/newsletter/unsubscribe")
+				.permitAll()
 				.requestMatchers(HttpMethod.POST, "/api/payments/webhooks/**")
 				.permitAll()
 				.requestMatchers("/actuator/health/**", "/error")

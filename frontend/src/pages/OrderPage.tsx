@@ -28,7 +28,7 @@ export function OrderPage() {
     return <p className="text-stone-600">Chargement de la commande…</p>
   }
 
-  const { status, paymentMethod, totalAmount, createdAt, items } = order.data
+  const { status, paymentMethod, totalAmount, serviceFee, createdAt, items } = order.data
   const waitingForPayment = status === 'CREATED' && paymentMethod === 'ONLINE'
 
   async function pay() {
@@ -81,6 +81,12 @@ export function OrderPage() {
               </li>
             ))}
           </ul>
+          {serviceFee > 0 && (
+            <p className="mt-4 flex justify-between border-t border-stone-200 pt-3 text-sm">
+              <span>Frais de service (espèces)</span>
+              <span>{formatPrice(serviceFee)}</span>
+            </p>
+          )}
           <p className="mt-4 flex justify-between border-t border-stone-200 pt-4 text-lg">
             <span>Total</span>
             <span className="font-bold">{formatPrice(totalAmount)}</span>

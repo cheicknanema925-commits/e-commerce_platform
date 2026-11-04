@@ -2,6 +2,7 @@ import { type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { ErrorMessage } from '../../components/ErrorMessage.tsx'
 import { Pagination } from '../../components/Pagination.tsx'
+import { ExportButton } from '../../components/admin/ExportButton.tsx'
 import { AmountKpi, filterInput, Kpi, KpiStrip, PageHeader, TableCard, td, th } from '../../components/admin/ui.tsx'
 import { useCustomers, useStats } from '../../hooks/useAdmin.ts'
 import { initials } from '../../lib/admin.ts'
@@ -22,7 +23,7 @@ export function AdminCustomersPage() {
 
   return (
     <>
-      <PageHeader title="Gestion des clients" description="Aperçu des clients inscrits sur la boutique." />
+      <PageHeader title="Gestion des clients" description="Aperçu des clients inscrits sur la boutique." actions={<ExportButton name="customers" />} />
 
       {stats.data && (
         <KpiStrip>

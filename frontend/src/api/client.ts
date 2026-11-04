@@ -83,6 +83,24 @@ export async function apiRequest<T>(method: string, path: string, options: Reque
   return readResponse<T>(response)
 }
 
+// Fichier protégé (export CSV) : on le récupère avec le jeton, puis on déclenche l'enregistrement dans le navigateur
+export async function apiDownload(path: string, fallbackName: string): Promise<void> {
+  const send = () =>
+    fetch(buildUrl(path), { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {}, credentials: 'same-origin' })
+  let response = await send()
+  if (response.status === 401 && accessToken !== null && (await refreshAccessToken())) {
+    response = await send()
+  }
+  if (!response.ok) {
+    throw new ApiError(response.status, await readProblem(response))
+  }
+  const name = /filename="([^"]+)"/.exec(response.headers.get('Content-Disposition') ?? '')?.[1] ?? fallbackName
+  const url = URL.createObjectURL(await response.blob())
+  const link = Object.assign(document.createElement('a'), { href: url, download: name })
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 export function apiGet<T>(path: string, params: QueryParams = {}): Promise<T> {
   return apiRequest<T>('GET', path, { params })
 }

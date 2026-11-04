@@ -11,12 +11,15 @@ export type ProductFilters = {
   category?: string
   sort?: ProductSort
   page?: number
+  // Seulement les produits en promotion (prix barré)
+  promo?: boolean
 }
 
 export function fetchProducts(filters: ProductFilters): Promise<Page<Product>> {
   return apiGet('/products', {
     q: filters.q,
     category: filters.category,
+    promo: filters.promo ? 'true' : undefined,
     sort: filters.sort ?? 'id,desc',
     page: filters.page ?? 0,
     size: PAGE_SIZE,

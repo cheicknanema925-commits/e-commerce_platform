@@ -16,14 +16,21 @@ final class ProductSpecifications {
 	private ProductSpecifications() {
 	}
 
-	static Specification<Product> matching(String categorySlug, String search) {
+	// search : nom, marque ou référence ; promotionsOnly : seulement les produits avec un prix barré
+	static Specification<Product> matching(String categorySlug, String search, boolean promotionsOnly) {
 		return (root, query, cb) -> {
 			List<Predicate> predicates = new ArrayList<>();
 			if (StringUtils.hasText(categorySlug)) {
 				predicates.add(cb.equal(root.get("category").get("slug"), categorySlug));
 			}
 			if (StringUtils.hasText(search)) {
-				predicates.add(cb.like(cb.lower(root.get("name")), LikePatterns.contains(search), LikePatterns.ESCAPE));
+				String pattern = LikePatterns.contains(search);
+				predicates.add(cb.or(cb.like(cb.lower(root.get("name")), pattern, LikePatterns.ESCAPE),
+						cb.like(cb.lower(root.get("brand")), pattern, LikePatterns.ESCAPE),
+						cb.like(cb.lower(root.get("sku")), pattern, LikePatterns.ESCAPE)));
+			}
+			if (promotionsOnly) {
+				predicates.add(cb.isNotNull(root.get("compareAtPrice")));
 			}
 			return cb.and(predicates.toArray(Predicate[]::new));
 		};

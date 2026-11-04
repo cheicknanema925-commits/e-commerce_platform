@@ -4,6 +4,7 @@ import type { SalesPeriod } from '../../api/types.ts'
 import { ErrorMessage } from '../../components/ErrorMessage.tsx'
 import { OrderStatusBadge } from '../../components/OrderStatusBadge.tsx'
 import { OrdersToDo } from '../../components/admin/OrdersToDo.tsx'
+import { ExportButton } from '../../components/admin/ExportButton.tsx'
 import { PaymentCell } from '../../components/admin/PaymentCell.tsx'
 import { SalesPanel } from '../../components/admin/SalesPanel.tsx'
 import { AmountKpi, BarList, btnGhost, Kpi, KpiStrip, PageHeader, Panel, TableCard, td, th } from '../../components/admin/ui.tsx'
@@ -33,9 +34,12 @@ export function AdminDashboardPage() {
         title="Vue d’ensemble"
         description={`L’activité de votre boutique, aujourd’hui ${todayLabel}.`}
         actions={
-          <Link to="/admin/produits/nouveau" className={btnGhost}>
-            Ajouter un article
-          </Link>
+          <>
+            <ExportButton name="orders" label="Exporter le rapport" />
+            <Link to="/admin/produits/nouveau" className={btnGhost}>
+              Ajouter un article
+            </Link>
+          </>
         }
       />
 

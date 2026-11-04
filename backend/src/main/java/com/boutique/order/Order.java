@@ -46,6 +46,9 @@ public class Order {
 
 	private BigDecimal totalAmount;
 
+	// Frais de service (paiement en espèces), figés à la commande et déjà inclus dans totalAmount
+	private BigDecimal serviceFee = BigDecimal.ZERO;
+
 	// Verrouillage optimiste : empêche par exemple « annulée » et « payée » d'être enregistrées en même temps
 	@Version
 	private long version;
@@ -77,6 +80,15 @@ public class Order {
 		OrderItem item = new OrderItem(this, product, quantity);
 		items.add(item);
 		totalAmount = totalAmount.add(item.getSubtotal());
+	}
+
+	public void addServiceFee(BigDecimal fee) {
+		serviceFee = serviceFee.add(fee);
+		totalAmount = totalAmount.add(fee);
+	}
+
+	public BigDecimal getServiceFee() {
+		return serviceFee;
 	}
 
 	// Seul point d'entrée pour changer de statut : toute transition non prévue par la machine à états est refusée
