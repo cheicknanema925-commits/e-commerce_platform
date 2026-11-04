@@ -28,6 +28,10 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 
 	long countByStock(int stock);
 
+	boolean existsBySku(String sku);
+
+	boolean existsBySkuAndIdNot(String sku, Long id);
+
 	// Valeur du stock au prix de vente actuel
 	@Query("select coalesce(sum(p.price * p.stock), 0) from Product p")
 	BigDecimal stockValue();
