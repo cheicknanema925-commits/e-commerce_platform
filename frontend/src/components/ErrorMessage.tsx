@@ -5,7 +5,7 @@ export function ErrorMessage({ error }: { error: unknown }) {
   const message =
     error instanceof ApiError ? error.message : 'Impossible de joindre le serveur. Vérifiez votre connexion et réessayez.'
   return (
-    <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-4 text-red-800">
+    <p role="alert" className="rounded-lg border border-bissap/30 bg-bissap-soft p-4 text-sm font-medium text-bissap">
       {message}
     </p>
   )

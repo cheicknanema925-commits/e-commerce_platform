@@ -35,7 +35,8 @@ public class PaymentService {
 
 	private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
 
-	private static final String CASH = "cash";
+	// Fournisseur des paiements en espèces enregistrés à la livraison
+	public static final String CASH = "cash";
 
 	private final PaymentProvider provider;
 

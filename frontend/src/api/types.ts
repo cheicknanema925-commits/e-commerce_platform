@@ -1,5 +1,11 @@
 // Les mêmes formes que les DTO (records) renvoyés par Spring Boot
 
+// url relative (/api/images/…) servie par l'API ; la première image est la photo principale
+export type ProductImage = {
+  id: number
+  url: string
+}
+
 export type Product = {
   id: number
   name: string
@@ -8,6 +14,7 @@ export type Product = {
   stock: number
   categoryId: number
   categoryName: string
+  images: ProductImage[]
 }
 
 export type Category = {
@@ -50,12 +57,17 @@ export type UserProfile = {
   role: 'CUSTOMER' | 'ADMIN'
 }
 
-export type CartItem = {
+export type OrderItem = {
   productId: number
   productName: string
   unitPrice: number
   quantity: number
   subtotal: number
+}
+
+// imageUrl : photo principale du produit (null s'il n'en a pas)
+export type CartItem = OrderItem & {
+  imageUrl: string | null
 }
 
 export type Cart = {
@@ -66,8 +78,6 @@ export type Cart = {
 export type OrderStatus = 'CREATED' | 'PAID' | 'PREPARING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
 
 export type PaymentMethod = 'ONLINE' | 'CASH_ON_DELIVERY'
-
-export type OrderItem = CartItem
 
 export type Order = {
   id: number
@@ -104,6 +114,64 @@ export type PaymentSession = {
   status: 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'REFUNDED'
   amount: number
   checkoutUrl: string
+}
+
+// Back-office : nextStatuses est calculé par la machine à états du serveur
+export type AdminOrder = Order & {
+  customerName: string
+  customerEmail: string
+  nextStatuses: OrderStatus[]
+}
+
+// Montants « encaissés » = paiements réussis (en ligne confirmés + espèces reçues à la livraison)
+export type PeriodSummary = {
+  collected: number
+  orders: number
+}
+
+export type AdminStats = {
+  collectedRevenue: number
+  orderCount: number
+  customerCount: number
+  today: PeriodSummary
+  thisMonth: PeriodSummary
+  awaitingConfirmation: number
+  averageOrderValue: number
+  // cashToCollect : espèces que les livreurs doivent encore remettre (commandes ni livrées ni annulées)
+  payments: { collectedOnline: number; collectedCash: number; cashToCollect: number; cashToCollectOrders: number }
+  // repeat : clients ayant au moins 2 commandes non annulées
+  customers: { newThisMonth: number; repeat: number }
+  ordersByStatus: { status: OrderStatus; count: number }[]
+  salesByCategory: { category: string; quantity: number; revenue: number }[]
+  bestSellers: { productId: number; name: string; quantity: number; imageUrl: string | null }[]
+  lowStock: { productId: number; name: string; stock: number; imageUrl: string | null }[]
+  catalog: { productCount: number; outOfStock: number; stockValue: number }
+}
+
+export type SalesPeriod = 'DAY' | 'MONTH'
+
+// Un point par jour (ou par mois), y compris les périodes sans vente ; start au format AAAA-MM-JJ
+export type SalesReport = {
+  period: SalesPeriod
+  points: { start: string; collected: number; orders: number }[]
+}
+
+export type AdminCustomer = {
+  id: number
+  fullName: string
+  email: string
+  createdAt: string
+  orderCount: number
+  totalSpent: number
+  lastOrderAt: string | null
+}
+
+export type ProductInput = {
+  categoryId: number
+  name: string
+  description: string | null
+  price: number
+  stock: number
 }
 
 // Format d'erreur standard de l'API (RFC 9457), produit par GlobalExceptionHandler

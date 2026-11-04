@@ -16,13 +16,15 @@ public record CartResponse(List<CartItemResponse> items, BigDecimal total) {
 		return new CartResponse(items, total);
 	}
 
+	// imageUrl : photo principale du produit (null s'il n'en a pas)
 	public record CartItemResponse(Long productId, String productName, BigDecimal unitPrice, int quantity,
-			BigDecimal subtotal) {
+			BigDecimal subtotal, String imageUrl) {
 
 		static CartItemResponse from(CartItem item) {
 			BigDecimal price = item.getProduct().getPrice();
 			return new CartItemResponse(item.getProduct().getId(), item.getProduct().getName(), price,
-					item.getQuantity(), price.multiply(BigDecimal.valueOf(item.getQuantity())));
+					item.getQuantity(), price.multiply(BigDecimal.valueOf(item.getQuantity())),
+					item.getProduct().getMainImageUrl());
 		}
 
 	}

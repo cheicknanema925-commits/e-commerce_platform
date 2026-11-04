@@ -1,5 +1,7 @@
 package com.boutique.catalog;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -44,7 +46,7 @@ class ProductControllerTest {
 	@Test
 	void anyoneCanReadProducts() throws Exception {
 		when(productService.findById(1L))
-			.thenReturn(new ProductResponse(1L, "Boubou bazin", null, null, 5, 1L, "Mode"));
+			.thenReturn(new ProductResponse(1L, "Boubou bazin", null, null, 5, 1L, "Mode", List.of()));
 
 		mockMvc.perform(get("/api/products/1")).andExpect(status().isOk());
 	}

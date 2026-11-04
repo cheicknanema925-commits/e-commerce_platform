@@ -114,7 +114,7 @@ class OrderServiceIntegrationTests {
 	void adminListIsPaginatedWithoutNPlusOne() {
 		statistics.clear();
 
-		var page = orderService.findAll(null, PageRequest.of(0, 10));
+		var page = orderService.findAll(null, null, null, PageRequest.of(0, 10));
 
 		assertThat(page.content()).hasSize(3).allSatisfy((order) -> assertThat(order.items()).hasSize(2));
 		assertThat(statistics.getPrepareStatementCount()).isLessThanOrEqualTo(3);

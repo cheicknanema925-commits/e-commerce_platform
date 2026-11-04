@@ -15,3 +15,6 @@ Thumbs.db
 # Frontend (étape 7)
 node_modules/
 dist/
+
+# Photos des produits envoyées en développement (boutique.catalog.images-dir)
+backend/data/

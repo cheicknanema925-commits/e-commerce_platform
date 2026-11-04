@@ -1,10 +1,11 @@
 import { Link, useParams, useSearchParams } from 'react-router'
 import { ApiError } from '../api/client.ts'
 import { DeliveryTracking } from '../components/DeliveryTracking.tsx'
+import { OrderStatusBadge } from '../components/OrderStatusBadge.tsx'
 import { ErrorMessage } from '../components/ErrorMessage.tsx'
 import { useCancelOrder, useDelivery, useOrder, useStartPayment } from '../hooks/useOrders.ts'
 import { formatDate, formatPrice } from '../lib/format.ts'
-import { orderStatusLabel, PAYMENT_METHOD_LABELS } from '../lib/labels.ts'
+import { PAYMENT_METHOD_LABELS } from '../lib/labels.ts'
 import { NotFoundPage } from './NotFoundPage.tsx'
 
 export function OrderPage() {
@@ -37,12 +38,12 @@ export function OrderPage() {
 
   return (
     <>
-      <Link to="/commandes" className="text-sm font-medium text-brand-700 hover:underline">
+      <Link to="/commandes" className="text-sm font-semibold text-brand-700 hover:underline">
         ← Mes commandes
       </Link>
-      <div className="mt-4 flex flex-wrap items-baseline justify-between gap-4">
-        <h1 className="text-3xl font-bold tracking-tight">Commande n° {id}</h1>
-        <p className="rounded-full bg-brand-50 px-3 py-1 text-sm font-medium text-brand-800">{orderStatusLabel(status, paymentMethod)}</p>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <h1 className="text-[clamp(28px,3.4vw,40px)] font-bold tracking-tight">Commande n° {id}</h1>
+        <OrderStatusBadge status={status} paymentMethod={paymentMethod} />
       </div>
       <p className="mt-1 text-sm text-stone-600">
         Passée le {formatDate(createdAt)} · {PAYMENT_METHOD_LABELS[paymentMethod]}
@@ -50,16 +51,16 @@ export function OrderPage() {
 
       <div aria-live="polite" className="mt-4 space-y-2">
         {searchParams.get('confirmation') && (
-          <p className="rounded-md bg-brand-50 p-4 text-brand-900">Merci ! Votre commande est enregistrée. Vous paierez en espèces au livreur.</p>
+          <p className="rounded-lg bg-kola-soft p-4 font-medium text-kola">Merci ! Votre commande est enregistrée. Vous paierez en espèces au livreur.</p>
         )}
         {paymentReturn === 'retour' && waitingForPayment && (
-          <p className="rounded-md bg-amber-50 p-4 text-amber-900">Paiement en cours de vérification auprès du fournisseur…</p>
+          <p className="rounded-lg bg-safran-soft p-4 font-medium text-safran-ink">Paiement en cours de vérification auprès du fournisseur…</p>
         )}
         {paymentReturn === 'retour' && status === 'PAID' && (
-          <p className="rounded-md bg-brand-50 p-4 text-brand-900">Paiement confirmé. Merci pour votre commande !</p>
+          <p className="rounded-lg bg-kola-soft p-4 font-medium text-kola">Paiement confirmé. Merci pour votre commande !</p>
         )}
         {paymentReturn === 'annule' && waitingForPayment && (
-          <p className="rounded-md bg-stone-100 p-4 text-stone-800">Paiement annulé. Vous pouvez réessayer quand vous voulez.</p>
+          <p className="rounded-lg bg-stone-200 p-4 text-stone-800">Paiement annulé. Vous pouvez réessayer quand vous voulez.</p>
         )}
         {(cancel.isError || startPayment.isError) && <ErrorMessage error={cancel.error ?? startPayment.error} />}
       </div>
@@ -82,7 +83,7 @@ export function OrderPage() {
           </ul>
           <p className="mt-4 flex justify-between border-t border-stone-200 pt-4 text-lg">
             <span>Total</span>
-            <span className="font-bold text-brand-800">{formatPrice(totalAmount)}</span>
+            <span className="font-bold">{formatPrice(totalAmount)}</span>
           </p>
         </section>
 
@@ -92,7 +93,7 @@ export function OrderPage() {
               type="button"
               onClick={() => pay().catch(() => undefined)}
               disabled={startPayment.isPending}
-              className="rounded-md bg-brand-700 px-4 py-3 font-medium text-white hover:bg-brand-800 disabled:opacity-60"
+              className="rounded-full bg-safran py-3.5 font-bold text-stone-900 hover:bg-safran-light disabled:opacity-60"
             >
               Payer {formatPrice(totalAmount)}
             </button>
@@ -106,7 +107,7 @@ export function OrderPage() {
                   cancel.mutate(id)
                 }
               }}
-              className="rounded-md border border-red-300 px-4 py-2 font-medium text-red-700 hover:bg-red-50"
+              className="rounded-full border-2 border-bissap/40 py-2.5 font-semibold text-bissap hover:bg-bissap-soft"
             >
               Annuler la commande
             </button>
@@ -115,7 +116,7 @@ export function OrderPage() {
         </aside>
       </div>
 
-      {delivery.data && (
+      {delivery.data && status !== 'CANCELLED' && (
         <div className="mt-6">
           <DeliveryTracking delivery={delivery.data} />
         </div>

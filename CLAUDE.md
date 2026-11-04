@@ -42,6 +42,23 @@ java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod  
   contre les redirections ouvertes (?retour=…)
 - Paiement en ligne : redirection vers `checkoutUrl` du fournisseur ; au retour, on attend la confirmation du serveur
   (polling) ; en dev, `/paiement-simule/:référence` imite la page du fournisseur
+- Design « Shop Africa » d'après les maquettes de l'utilisateur (`shop_africa.html`, `shop_africa_admin.html`) :
+  jetons dans `index.css` (`brand` = indigo, `stone` = gris bleutés, `safran` boutons/prix, `bissap` alertes,
+  `kola` stock/confirmations, `tint-*` fonds des rayons) ; police Bricolage Grotesque auto-hébergée (`@fontsource-variable`,
+  aucun appel à Google Fonts) ; `Logo`, `Icon`, `PriceTag` (étiquette de prix), `lib/categories.ts` (emoji + couleur par rayon)
+- Boutique : en-tête collant (recherche, rayons), étal d'accueil, panier en tiroir (`CartDrawer`, `<dialog>` natif),
+  toasts (`ToastProvider` + `useToast`), localisation de livraison (`DeliveryLocation` : géolocalisation du navigateur,
+  carte OpenStreetMap intégrée, message clair si refus), frise de suivi (`DeliveryTracking`)
+- Back-office `/admin` : route à part, hors du `Layout` de la boutique (cadre `AdminLayout` : barre latérale indigo,
+  icônes seules sur mobile), sous `RequireAuth` + `RequireAdmin` ; pages Vue d'ensemble, Produits, Ajouter un article
+  (photos choisies avant l'enregistrement, envoyées juste après), Commandes (changement de statut limité aux
+  `nextStatuses` de l'API), Paiements (espèces à récupérer), Analyse des ventes, Clients ; briques dans `components/admin/ui.tsx`
+- Éléments des maquettes non repris faute de données réelles : favoris, infolettre, prix barré/promotions, marque, référence,
+  livreurs, paramètres, export ; à ajouter comme vraies fonctionnalités si besoin
+- Graphiques : SVG écrit à la main (`components/admin/SalesChart.tsx`), une couleur par série, info-bulle au survol ET
+  au clavier, tableau des données à côté ; pas de bibliothèque de graphiques
+- Tableaux qui défilent : conteneur `relative overflow-x-auto` (sinon les libellés `sr-only` élargissent la page)
+- Envoi de fichiers : `FormData` passé tel quel à `apiRequest` (le navigateur écrit le Content-Type multipart)
 - CI : job `frontend` (npm ci, lint, test, build)
 
 ## Profils
@@ -104,6 +121,26 @@ java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod  
   auteur affiché « Prénom N. » ; commentaires = texte non fiable (XSS côté frontend, injection de prompt pour l'agent)
 - Événements : appel direct pour ce qui doit être dans la même transaction, `ApplicationEvent` pour les conséquences ;
   `OrderPaidEvent` → `@TransactionalEventListener(AFTER_COMMIT)` dans `notification` (rien n'est envoyé si rollback)
+- Admin : `/api/admin/orders` (filtres `status`, `paymentMethod`, `q` via `OrderSpecifications`) renvoie
+  `AdminOrderResponse` (client + `nextStatuses` pour l'acteur ADMIN) ; package `admin` = statistiques
+  (`GET /api/admin/stats`, `/stats/sales?period=DAY|MONTH`) et clients (`GET /api/admin/customers`) calculés en base
+  (projections, `date_trunc` à l'heure `Africa/Dakar`, périodes vides complétées en Java), jamais en chargeant toutes
+  les commandes en mémoire ; un produit déjà commandé ne se supprime pas (clé étrangère → 409)
+- Statistiques : panier moyen, ventes par catégorie, clients fidèles (≥ 2 commandes), espèces à récupérer
+  (commandes en espèces ni livrées ni annulées) ; `GET /api/admin/orders?status=CREATED,PREPARING` accepte plusieurs statuts
+- Recherche texte : `common/LikePatterns.contains` (échappe `%` et `_`) pour tous les LIKE
+
+## Photos des produits
+
+- Table `product_images` (position 0 = principale, 8 max) ; `Product.images` avec `@BatchSize` (pas de N+1 sur une
+  page) et `@OptimisticLock(excluded = true)` (une photo ne fait pas échouer un achat simultané)
+- `POST /api/products/{id}/images` (multipart `file`, ADMIN, 5 Mo max → 413), `PUT …/{imageId}/main`, `DELETE …/{imageId}` ;
+  lecture publique `GET /api/images/{uuid}.jpg` (cache 1 an, nom = UUID donc jamais modifié)
+- `ImageProcessor` : premiers octets JPEG/PNG, dimensions lues avant décodage (8 000 px max), réduit à 1 600 px,
+  réenregistré en JPEG sans métadonnées (EXIF/GPS supprimés) ; traitement et écriture HORS transaction
+- `ImageStorage` (stratégie) : `LocalImageStorage` dans `boutique.catalog.images-dir` (`IMAGES_DIR`, défaut
+  `./data/images`, ignoré par git ; tests : `target/test-images`) ; fichiers effacés APRÈS le commit
+  (`ProductImagesDeletedEvent` + `@TransactionalEventListener`)
 
 ## Paiement
 

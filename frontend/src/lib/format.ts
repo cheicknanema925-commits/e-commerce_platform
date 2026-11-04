@@ -15,3 +15,10 @@ export function formatPrice(amount: number): string {
 export function formatDate(isoDate: string): string {
   return dateFormatter.format(new Date(isoDate))
 }
+
+const numberFormatter = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 })
+
+// Nombre seul, avec séparateur de milliers (l'unité « FCFA » est écrite à côté, en plus petit)
+export function formatNumber(value: number): string {
+  return numberFormatter.format(value)
+}

@@ -1,5 +1,8 @@
 package com.boutique.catalog;
 
+import java.util.List;
+
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -15,9 +18,13 @@ public class ProductService {
 
 	private final CategoryRepository categoryRepository;
 
-	public ProductService(ProductRepository productRepository, CategoryRepository categoryRepository) {
+	private final ApplicationEventPublisher events;
+
+	public ProductService(ProductRepository productRepository, CategoryRepository categoryRepository,
+			ApplicationEventPublisher events) {
 		this.productRepository = productRepository;
 		this.categoryRepository = categoryRepository;
+		this.events = events;
 	}
 
 	public PageResponse<ProductResponse> findAll(String categorySlug, String search, Pageable pageable) {
@@ -46,9 +53,13 @@ public class ProductService {
 		return ProductResponse.from(product);
 	}
 
+	// Les lignes des photos partent avec le produit (cascade) ; leurs fichiers seront effacés après le commit
 	@Transactional
 	public void delete(Long id) {
-		productRepository.delete(getProduct(id));
+		Product product = getProduct(id);
+		List<String> filenames = product.getImages().stream().map(ProductImage::getFilename).toList();
+		productRepository.delete(product);
+		events.publishEvent(new ProductImagesDeletedEvent(filenames));
 	}
 
 	private Product getProduct(Long id) {

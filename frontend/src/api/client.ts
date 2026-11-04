@@ -55,7 +55,9 @@ export async function apiRequest<T>(method: string, path: string, options: Reque
   const url = buildUrl(path, options.params)
   const send = () => {
     const headers: Record<string, string> = { Accept: 'application/json' }
-    if (options.body !== undefined) {
+    // FormData (envoi de fichier) : le navigateur écrit lui-même le Content-Type multipart et sa « boundary »
+    const isForm = options.body instanceof FormData
+    if (options.body !== undefined && !isForm) {
       headers['Content-Type'] = 'application/json'
     }
     if (accessToken) {
@@ -65,7 +67,7 @@ export async function apiRequest<T>(method: string, path: string, options: Reque
       method,
       headers,
       credentials: 'same-origin',
-      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      body: isForm ? (options.body as FormData) : options.body !== undefined ? JSON.stringify(options.body) : undefined,
     })
   }
 

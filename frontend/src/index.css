@@ -1,20 +1,71 @@
 @import 'tailwindcss';
+/* Police de la maquette, servie par notre propre site (aucun appel à Google Fonts) */
+@import '@fontsource-variable/bricolage-grotesque/opsz.css';
 
-/* Couleurs de la marque, utilisables comme classes Tailwind : bg-brand-700, text-brand-800… */
+/* Couleurs de la maquette « Shop Africa », utilisables comme classes Tailwind : bg-brand-700, text-safran…
+   brand = indigo de teinture (marque), stone = gris bleutés (textes, bordures, fonds). On redéfinit ces deux
+   gammes existantes : toutes les pages adoptent la palette sans changer leurs classes. */
 @theme {
-  --color-brand-50: #ecfdf5;
-  --color-brand-100: #d1fae5;
-  --color-brand-600: #059669;
-  --color-brand-700: #047857;
-  --color-brand-800: #065f46;
-  --color-brand-900: #064e3b;
+  --font-sans: 'Bricolage Grotesque Variable', 'Segoe UI', system-ui, sans-serif;
+
+  --color-brand-50: #eef0fa;
+  --color-brand-100: #e3e6f7;
+  --color-brand-200: #c9ceee;
+  --color-brand-300: #8f98d6;
+  --color-brand-400: #6670c2;
+  --color-brand-500: #3d49a0;
+  --color-brand-600: #2a3690;
+  --color-brand-700: #1e2a78;
+  --color-brand-800: #182267;
+  --color-brand-900: #141c55;
+
+  --color-stone-50: #f8f9fc;
+  --color-stone-100: #f3f4f8;
+  --color-stone-200: #dcdee8;
+  --color-stone-300: #c4c7d6;
+  --color-stone-400: #9ca0b6;
+  --color-stone-500: #737892;
+  --color-stone-600: #5b6078;
+  --color-stone-700: #3f4462;
+  --color-stone-800: #2a2e4a;
+  --color-stone-900: #151833;
+
+  /* Safran : boutons d'action, étiquettes de prix */
+  --color-safran: #f2a900;
+  --color-safran-light: #ffbe1f;
+  --color-safran-soft: #fff1c9;
+  --color-safran-ink: #8a5a00;
+  /* Bissap : ruptures, annulations, erreurs */
+  --color-bissap: #b5123f;
+  --color-bissap-soft: #f9dde5;
+  /* Kola : en stock, livré, confirmations */
+  --color-kola: #0e7a5c;
+  --color-kola-soft: #ddf0e9;
+
+  /* Fonds des rayons */
+  --color-tint-indigo: #e3e6f7;
+  --color-tint-safran: #fff1c9;
+  --color-tint-bissap: #f9dde5;
+  --color-tint-kola: #ddf0e9;
+  --color-tint-violet: #f1e3f5;
+  --color-tint-sky: #e2eef7;
 }
 
 body {
-  @apply bg-stone-50 text-stone-900 antialiased;
+  @apply bg-stone-100 text-stone-900 antialiased;
 }
 
 /* Contour bien visible pour la navigation au clavier (accessibilité) */
 :focus-visible {
-  @apply outline-2 outline-offset-2 outline-brand-700;
+  @apply rounded-sm outline-3 outline-offset-2 outline-safran;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
 }

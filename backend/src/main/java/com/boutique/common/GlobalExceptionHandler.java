@@ -18,6 +18,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 // Toutes les erreurs de tous les contrôleurs arrivent ici et repartent au format ProblemDetail (RFC 9457).
@@ -112,6 +113,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 					.map((error) -> new InvalidField(error.getField(), error.getDefaultMessage()))
 					.sorted(Comparator.comparing(InvalidField::field))
 					.toList());
+		return handleExceptionInternal(ex, problem, headers, status, request);
+	}
+
+	// Fichier envoyé plus gros que spring.servlet.multipart.max-file-size (photos des produits : 5 Mo)
+	@Override
+	protected ResponseEntity<Object> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException ex,
+			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(status,
+				"Fichier trop volumineux : 5 Mo maximum par photo.");
+		problem.setTitle("Fichier trop volumineux");
 		return handleExceptionInternal(ex, problem, headers, status, request);
 	}
 
