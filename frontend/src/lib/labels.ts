@@ -33,8 +33,6 @@ export function adminActionLabel(target: OrderStatus, paymentMethod: PaymentMeth
   }
 }
 
-export const ORDER_STATUSES: OrderStatus[] = ['CREATED', 'PAID', 'PREPARING', 'SHIPPED', 'DELIVERED', 'CANCELLED']
-
 export const DELIVERY_STEPS: { status: DeliveryStatus; label: string }[] = [
   { status: 'PENDING', label: 'Commande reçue' },
   { status: 'PREPARING', label: 'En préparation' },

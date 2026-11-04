@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router'
 import { ApiError } from '../api/client.ts'
 import { AddToCart } from '../components/AddToCart.tsx'
 import { ErrorMessage } from '../components/ErrorMessage.tsx'
+import { ProductGallery } from '../components/ProductGallery.tsx'
 import { StarRating } from '../components/StarRating.tsx'
 import { useProduct, useRating, useReviews } from '../hooks/useCatalog.ts'
 import { formatDate, formatPrice } from '../lib/format.ts'
@@ -31,12 +32,7 @@ export function ProductPage() {
       </Link>
 
       <article className="mt-4 grid gap-8 md:grid-cols-2">
-        <div
-          aria-hidden="true"
-          className="flex aspect-square items-center justify-center rounded-lg bg-brand-50 text-8xl font-bold text-brand-700"
-        >
-          {name.charAt(0)}
-        </div>
+        <ProductGallery key={product.data.id} product={product.data} />
         <div>
           <p className="text-sm font-medium uppercase tracking-wide text-stone-500">{categoryName}</p>
           <h1 className="mt-1 text-3xl font-bold tracking-tight">{name}</h1>

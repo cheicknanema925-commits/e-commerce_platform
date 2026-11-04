@@ -1,5 +1,11 @@
 // Les mêmes formes que les DTO (records) renvoyés par Spring Boot
 
+// url relative (/api/images/…) servie par l'API ; la première image est la photo principale
+export type ProductImage = {
+  id: number
+  url: string
+}
+
 export type Product = {
   id: number
   name: string
@@ -8,6 +14,7 @@ export type Product = {
   stock: number
   categoryId: number
   categoryName: string
+  images: ProductImage[]
 }
 
 export type Category = {
@@ -113,13 +120,41 @@ export type AdminOrder = Order & {
   nextStatuses: OrderStatus[]
 }
 
+// Montants « encaissés » = paiements réussis (en ligne confirmés + espèces reçues à la livraison)
+export type PeriodSummary = {
+  collected: number
+  orders: number
+}
+
 export type AdminStats = {
   collectedRevenue: number
   orderCount: number
   customerCount: number
+  today: PeriodSummary
+  thisMonth: PeriodSummary
+  awaitingConfirmation: number
   ordersByStatus: { status: OrderStatus; count: number }[]
   bestSellers: { productId: number; name: string; quantity: number }[]
   lowStock: { productId: number; name: string; stock: number }[]
+  catalog: { productCount: number; outOfStock: number; stockValue: number }
+}
+
+export type SalesPeriod = 'DAY' | 'MONTH'
+
+// Un point par jour (ou par mois), y compris les périodes sans vente ; start au format AAAA-MM-JJ
+export type SalesReport = {
+  period: SalesPeriod
+  points: { start: string; collected: number; orders: number }[]
+}
+
+export type AdminCustomer = {
+  id: number
+  fullName: string
+  email: string
+  createdAt: string
+  orderCount: number
+  totalSpent: number
+  lastOrderAt: string | null
 }
 
 export type ProductInput = {

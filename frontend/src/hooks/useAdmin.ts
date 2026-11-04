@@ -1,38 +1,62 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  type AdminOrderFilters,
   changeOrderStatus,
   createProduct,
   deleteProduct,
+  deleteProductImage,
   fetchAdminDelivery,
   fetchAdminOrder,
   fetchAdminOrders,
+  fetchCustomers,
+  fetchSales,
   fetchStats,
+  makeMainProductImage,
   updateProduct,
+  uploadProductImage,
 } from '../api/admin.ts'
-import type { OrderStatus } from '../api/types.ts'
+import type { SalesPeriod } from '../api/types.ts'
 
+// Le tableau de bord se rafraîchit seul toutes les minutes (nouvelles commandes, paiements reçus)
 export function useStats() {
-  return useQuery({ queryKey: ['admin', 'stats'], queryFn: fetchStats })
+  return useQuery({ queryKey: ['admin', 'stats'], queryFn: fetchStats, refetchInterval: 60_000 })
 }
 
-export function useAdminOrders(status: OrderStatus | undefined, page: number) {
+export function useSales(period: SalesPeriod) {
   return useQuery({
-    queryKey: ['admin', 'orders', status, page],
-    queryFn: () => fetchAdminOrders(status, page),
+    queryKey: ['admin', 'sales', period],
+    queryFn: () => fetchSales(period),
+    // Garde le graphique précédent affiché pendant le chargement de l'autre période (pas de « trou »)
+    placeholderData: keepPreviousData,
+  })
+}
+
+export function useAdminOrders(filters: AdminOrderFilters) {
+  return useQuery({
+    queryKey: ['admin', 'orders', filters],
+    queryFn: () => fetchAdminOrders(filters),
     placeholderData: keepPreviousData,
   })
 }
 
 export function useAdminOrder(id: number) {
-  return useQuery({ queryKey: ['admin', 'orders', id], queryFn: () => fetchAdminOrder(id), enabled: Number.isInteger(id) })
+  return useQuery({ queryKey: ['admin', 'order', id], queryFn: () => fetchAdminOrder(id), enabled: Number.isInteger(id) })
 }
 
 export function useAdminDelivery(orderId: number) {
   return useQuery({
-    queryKey: ['admin', 'orders', orderId, 'delivery'],
+    queryKey: ['admin', 'order', orderId, 'delivery'],
     queryFn: () => fetchAdminDelivery(orderId),
     enabled: Number.isInteger(orderId),
     retry: false,
+  })
+}
+
+export function useCustomers(q: string | undefined, page: number) {
+  return useQuery({
+    queryKey: ['admin', 'customers', q, page],
+    queryFn: () => fetchCustomers(q, page),
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -67,4 +91,16 @@ export function useUpdateProduct() {
 
 export function useDeleteProduct() {
   return useProductMutation(deleteProduct)
+}
+
+export function useUploadProductImage() {
+  return useProductMutation(uploadProductImage)
+}
+
+export function useMakeMainProductImage() {
+  return useProductMutation(makeMainProductImage)
+}
+
+export function useDeleteProductImage() {
+  return useProductMutation(deleteProductImage)
 }

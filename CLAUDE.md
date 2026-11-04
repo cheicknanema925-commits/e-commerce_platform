@@ -42,8 +42,14 @@ java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod  
   contre les redirections ouvertes (?retour=…)
 - Paiement en ligne : redirection vers `checkoutUrl` du fournisseur ; au retour, on attend la confirmation du serveur
   (polling) ; en dev, `/paiement-simule/:référence` imite la page du fournisseur
-- Back-office `/admin` (`pages/admin/`, sous `RequireAuth` + `RequireAdmin`) : tableau de bord, produits (CRUD),
-  commandes (filtre par statut, boutons construits depuis `nextStatuses` renvoyé par l'API, jamais recalculés côté client)
+- Back-office `/admin` : route à part, hors du `Layout` de la boutique (cadre `AdminLayout`, menu latéral), sous
+  `RequireAuth` + `RequireAdmin` ; tableau de bord (ventes par jour/mois, à traiter, stock), commandes (onglets
+  `lib/orderViews.ts`, recherche ; boutons construits depuis `nextStatuses` de l'API, jamais recalculés), produits
+  (CRUD + photos), clients
+- Graphiques : SVG écrit à la main (`components/admin/SalesChart.tsx`), une couleur par série, info-bulle au survol ET
+  au clavier, tableau des données à côté ; pas de bibliothèque de graphiques
+- Envoi de fichiers : `FormData` passé tel quel à `apiRequest` (le navigateur écrit le Content-Type multipart)
+- Design : l'utilisateur fournira ses propres maquettes ; d'ici là, pages fonctionnelles et propres
 - CI : job `frontend` (npm ci, lint, test, build)
 
 ## Profils
@@ -106,9 +112,24 @@ java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod  
   auteur affiché « Prénom N. » ; commentaires = texte non fiable (XSS côté frontend, injection de prompt pour l'agent)
 - Événements : appel direct pour ce qui doit être dans la même transaction, `ApplicationEvent` pour les conséquences ;
   `OrderPaidEvent` → `@TransactionalEventListener(AFTER_COMMIT)` dans `notification` (rien n'est envoyé si rollback)
-- Admin : `/api/admin/orders` renvoie `AdminOrderResponse` (client + `nextStatuses` pour l'acteur ADMIN) ; package `admin`
-  = statistiques (`GET /api/admin/stats`) calculées en base (projections d'interface `countByStatus`, `bestSellers`),
-  jamais en chargeant toutes les commandes en mémoire ; un produit déjà commandé ne se supprime pas (clé étrangère → 409)
+- Admin : `/api/admin/orders` (filtres `status`, `paymentMethod`, `q` via `OrderSpecifications`) renvoie
+  `AdminOrderResponse` (client + `nextStatuses` pour l'acteur ADMIN) ; package `admin` = statistiques
+  (`GET /api/admin/stats`, `/stats/sales?period=DAY|MONTH`) et clients (`GET /api/admin/customers`) calculés en base
+  (projections, `date_trunc` à l'heure `Africa/Dakar`, périodes vides complétées en Java), jamais en chargeant toutes
+  les commandes en mémoire ; un produit déjà commandé ne se supprime pas (clé étrangère → 409)
+- Recherche texte : `common/LikePatterns.contains` (échappe `%` et `_`) pour tous les LIKE
+
+## Photos des produits
+
+- Table `product_images` (position 0 = principale, 8 max) ; `Product.images` avec `@BatchSize` (pas de N+1 sur une
+  page) et `@OptimisticLock(excluded = true)` (une photo ne fait pas échouer un achat simultané)
+- `POST /api/products/{id}/images` (multipart `file`, ADMIN, 5 Mo max → 413), `PUT …/{imageId}/main`, `DELETE …/{imageId}` ;
+  lecture publique `GET /api/images/{uuid}.jpg` (cache 1 an, nom = UUID donc jamais modifié)
+- `ImageProcessor` : premiers octets JPEG/PNG, dimensions lues avant décodage (8 000 px max), réduit à 1 600 px,
+  réenregistré en JPEG sans métadonnées (EXIF/GPS supprimés) ; traitement et écriture HORS transaction
+- `ImageStorage` (stratégie) : `LocalImageStorage` dans `boutique.catalog.images-dir` (`IMAGES_DIR`, défaut
+  `./data/images`, ignoré par git ; tests : `target/test-images`) ; fichiers effacés APRÈS le commit
+  (`ProductImagesDeletedEvent` + `@TransactionalEventListener`)
 
 ## Paiement
 
