@@ -61,3 +61,15 @@ fournisseur). Contrôles en place et leur preuve :
 | A01 / A05 | Nom de fichier choisi par le serveur (UUID) ; lecture limitée au motif `uuid.jpg`, chemin vérifié dans le dossier (pas de `../`) | `unexpectedFileNamesAreNeverLookedUpOnDisk` |
 | A05 | Servies avec `Content-Type: image/jpeg` et `X-Content-Type-Options: nosniff` : le navigateur ne peut pas les interpréter comme une page | Vérifié avec curl |
 | A04 | Fichiers effacés seulement APRÈS le commit : une suppression refusée (produit déjà commandé) garde ses photos | `refusedProductDeletionKeepsItsPhotos`, `deletingAPhotoAlsoDeletesItsFile` |
+
+## Revue de l'étape 7 : favoris, infolettre, livreurs, paramètres, exports
+
+| OWASP | Contrôle | Preuve |
+|---|---|---|
+| A01 | Favoris : identité lue dans le jeton, chaque client ne voit que les siens (IDOR) | `favoritesArePrivate` |
+| A04 / A07 | Infolettre : même réponse que l'adresse soit inscrite ou non (pas d'énumération), débit limité comme la connexion | `subscribingTwiceGivesTheSameAnswerAndASingleSubscription` |
+| A01 | Désinscription uniquement avec un jeton aléatoire de 256 bits, jamais avec l'email ; jeton absent de l'API admin | `unsubscribeWorksWithTheSecretTokenOnly`, `adminSeesSubscribersWithoutTheirToken` |
+| A04 | Paramètres de paiement appliqués par le serveur à chaque commande (masquer un bouton ne suffit pas) | `StoreSettingsIntegrationTests` |
+| A03 | Exports CSV : injection de formule neutralisée (`=`, `+`, `-`, `@` préfixés d'une apostrophe) | `CsvWriterTest.formulaInjectionIsNeutralized`, `exportsAreCsvFilesForExcel` |
+| A01 | Livreurs, paramètres, abonnés, exports : réservés à l'ADMIN (403 pour un client) | `customerCannotManageCouriers`, `exportsAreCsvFilesForExcel` |
+

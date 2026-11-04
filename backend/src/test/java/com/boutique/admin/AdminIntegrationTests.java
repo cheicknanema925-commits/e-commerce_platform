@@ -1,6 +1,7 @@
 package com.boutique.admin;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -31,9 +32,13 @@ import com.boutique.user.Role;
 import com.boutique.user.User;
 import com.boutique.user.UserRepository;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -227,6 +232,31 @@ class AdminIntegrationTests {
 			.andExpect(jsonPath("$.customerEmail").value("awa@example.com"))
 			// Commande payée en ligne : l'admin peut la préparer ou l'annuler (remboursement), rien d'autre
 			.andExpect(jsonPath("$.nextStatuses").value(containsInAnyOrder("PREPARING", "CANCELLED")));
+	}
+
+	@Test
+	void exportsAreCsvFilesForExcel() throws Exception {
+		// Nom piégé : une formule qu'Excel exécuterait à l'ouverture du fichier
+		userRepository.save(new User("pirate@example.com", "=HYPERLINK(\"http://pirate.example\")", Role.CUSTOMER));
+
+		String csv = mockMvc.perform(get("/api/admin/exports/customers.csv").with(admin()))
+			.andExpect(status().isOk())
+			.andExpect(content().contentType("text/csv;charset=UTF-8"))
+			.andExpect(header().string("Content-Disposition", containsString("attachment; filename=\"clients-")))
+			.andReturn()
+			.getResponse()
+			.getContentAsString(StandardCharsets.UTF_8);
+
+		assertThat(csv).startsWith("\uFEFFNom;Email;Inscrit le;Commandes;Total commandé (FCFA);Dernière commande\r\n")
+			.contains("Awa Diop;awa@example.com;")
+			.contains("\"'=HYPERLINK(");
+		mockMvc.perform(get("/api/admin/exports/orders.csv").with(admin()))
+			.andExpect(status().isOk())
+			.andExpect(content().string(containsString("Awa Diop")))
+			// Libellés lisibles, pas les codes techniques (PAID, ONLINE)
+			.andExpect(content().string(containsString(";Payée;En ligne;")));
+		mockMvc.perform(get("/api/admin/exports/products.csv").with(jwt().authorities(new SimpleGrantedAuthority("ROLE_CUSTOMER"))))
+			.andExpect(status().isForbidden());
 	}
 
 	@Test
