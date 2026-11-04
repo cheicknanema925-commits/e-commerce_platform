@@ -1,6 +1,7 @@
 package com.boutique.admin;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
@@ -106,7 +107,74 @@ class AdminIntegrationTests {
 			.andExpect(jsonPath("$.bestSellers[0].quantity").value(2))
 			// Sandales : 4 en stock (≤ 5), remises en stock après l'annulation
 			.andExpect(jsonPath("$.lowStock[0].name").value("Sandales cuir"))
-			.andExpect(jsonPath("$.lowStock[0].stock").value(4));
+			.andExpect(jsonPath("$.lowStock[0].stock").value(4))
+			// Aujourd'hui et ce mois-ci : 50 000 encaissés, 1 commande (l'annulée ne compte pas)
+			.andExpect(jsonPath("$.today.collected").value(50000))
+			.andExpect(jsonPath("$.today.orders").value(1))
+			.andExpect(jsonPath("$.thisMonth.collected").value(50000))
+			.andExpect(jsonPath("$.awaitingConfirmation").value(0))
+			// Stock au prix de vente : 18 boubous × 25 000 + 4 sandales × 8 000
+			.andExpect(jsonPath("$.catalog.productCount").value(2))
+			.andExpect(jsonPath("$.catalog.outOfStock").value(0))
+			.andExpect(jsonPath("$.catalog.stockValue").value(482000));
+	}
+
+	// Une entrée par jour, même vide : le graphique n'a pas de trou. La dernière entrée = aujourd'hui.
+	@Test
+	void salesReportHasOneEntryPerDayOrMonthIncludingEmptyOnes() throws Exception {
+		mockMvc.perform(get("/api/admin/stats/sales").param("period", "DAY").with(admin()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.points.length()").value(30))
+			.andExpect(jsonPath("$.points[0].collected").value(0))
+			.andExpect(jsonPath("$.points[29].start").value(LocalDate.now(AdminStatsService.SHOP_ZONE).toString()))
+			.andExpect(jsonPath("$.points[29].collected").value(50000))
+			.andExpect(jsonPath("$.points[29].orders").value(1));
+
+		mockMvc.perform(get("/api/admin/stats/sales").param("period", "MONTH").with(admin()))
+			.andExpect(jsonPath("$.points.length()").value(12))
+			.andExpect(jsonPath("$.points[11].start")
+				.value(LocalDate.now(AdminStatsService.SHOP_ZONE).withDayOfMonth(1).toString()))
+			.andExpect(jsonPath("$.points[11].collected").value(50000));
+
+		mockMvc.perform(get("/api/admin/stats/sales").param("period", "YEAR").with(admin()))
+			.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void customersListShowsOrdersAndAmountSpentWithoutCancelledOrders() throws Exception {
+		mockMvc.perform(get("/api/admin/customers").with(admin()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.totalElements").value(2))
+			// Les plus récents d'abord : Moussa (commande annulée, donc 0), puis Awa
+			.andExpect(jsonPath("$.content[0].fullName").value("Moussa Fall"))
+			.andExpect(jsonPath("$.content[0].orderCount").value(0))
+			.andExpect(jsonPath("$.content[0].totalSpent").value(0))
+			.andExpect(jsonPath("$.content[0].lastOrderAt").doesNotExist())
+			.andExpect(jsonPath("$.content[1].fullName").value("Awa Diop"))
+			.andExpect(jsonPath("$.content[1].orderCount").value(1))
+			.andExpect(jsonPath("$.content[1].totalSpent").value(50000));
+
+		mockMvc.perform(get("/api/admin/customers").param("q", "AWA@").with(admin()))
+			.andExpect(jsonPath("$.totalElements").value(1))
+			.andExpect(jsonPath("$.content[0].email").value("awa@example.com"));
+	}
+
+	@Test
+	void ordersCanBeSearchedByCustomerOrNumberAndFilteredByPaymentMethod() throws Exception {
+		mockMvc.perform(get("/api/admin/orders").param("q", "diop").with(admin()))
+			.andExpect(jsonPath("$.totalElements").value(1))
+			.andExpect(jsonPath("$.content[0].id").value(paidOrderId));
+
+		mockMvc.perform(get("/api/admin/orders").param("q", "#" + paidOrderId).with(admin()))
+			.andExpect(jsonPath("$.totalElements").value(1))
+			.andExpect(jsonPath("$.content[0].customerName").value("Awa Diop"));
+
+		// « % » cherché tel quel (pas un joker qui renverrait tout)
+		mockMvc.perform(get("/api/admin/orders").param("q", "%").with(admin()))
+			.andExpect(jsonPath("$.totalElements").value(0));
+
+		mockMvc.perform(get("/api/admin/orders").param("paymentMethod", "CASH_ON_DELIVERY").with(admin()))
+			.andExpect(jsonPath("$.totalElements").value(0));
 	}
 
 	@Test

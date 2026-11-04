@@ -63,9 +63,10 @@ public class OrderService {
 	}
 
 	// Pagination en 2 temps : la page de commandes (sans lignes), puis les lignes et clients de CES commandes
-	public PageResponse<AdminOrderResponse> findAll(OrderStatus status, Pageable pageable) {
-		Page<Order> page = (status == null) ? orderRepository.findAll(pageable)
-				: orderRepository.findByStatus(status, pageable);
+	public PageResponse<AdminOrderResponse> findAll(OrderStatus status, PaymentMethod paymentMethod, String search,
+			Pageable pageable) {
+		Page<Order> page = orderRepository.findAll(OrderSpecifications.matching(status, paymentMethod, search),
+				pageable);
 		if (page.hasContent()) {
 			orderRepository.fetchItems(page.map(Order::getId).getContent());
 		}

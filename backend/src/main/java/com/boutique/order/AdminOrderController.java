@@ -1,6 +1,7 @@
 package com.boutique.order;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -30,8 +31,10 @@ public class AdminOrderController {
 
 	@GetMapping
 	public PageResponse<AdminOrderResponse> findAll(@RequestParam(required = false) OrderStatus status,
+			@RequestParam(required = false) PaymentMethod paymentMethod,
+			@RequestParam(required = false) @Size(max = 100) String q,
 			@PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
-		return orderService.findAll(status, pageable);
+		return orderService.findAll(status, paymentMethod, q, pageable);
 	}
 
 	@GetMapping("/{id}")
