@@ -57,12 +57,17 @@ export type UserProfile = {
   role: 'CUSTOMER' | 'ADMIN'
 }
 
-export type CartItem = {
+export type OrderItem = {
   productId: number
   productName: string
   unitPrice: number
   quantity: number
   subtotal: number
+}
+
+// imageUrl : photo principale du produit (null s'il n'en a pas)
+export type CartItem = OrderItem & {
+  imageUrl: string | null
 }
 
 export type Cart = {
@@ -73,8 +78,6 @@ export type Cart = {
 export type OrderStatus = 'CREATED' | 'PAID' | 'PREPARING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
 
 export type PaymentMethod = 'ONLINE' | 'CASH_ON_DELIVERY'
-
-export type OrderItem = CartItem
 
 export type Order = {
   id: number
@@ -133,9 +136,15 @@ export type AdminStats = {
   today: PeriodSummary
   thisMonth: PeriodSummary
   awaitingConfirmation: number
+  averageOrderValue: number
+  // cashToCollect : espèces que les livreurs doivent encore remettre (commandes ni livrées ni annulées)
+  payments: { collectedOnline: number; collectedCash: number; cashToCollect: number; cashToCollectOrders: number }
+  // repeat : clients ayant au moins 2 commandes non annulées
+  customers: { newThisMonth: number; repeat: number }
   ordersByStatus: { status: OrderStatus; count: number }[]
-  bestSellers: { productId: number; name: string; quantity: number }[]
-  lowStock: { productId: number; name: string; stock: number }[]
+  salesByCategory: { category: string; quantity: number; revenue: number }[]
+  bestSellers: { productId: number; name: string; quantity: number; imageUrl: string | null }[]
+  lowStock: { productId: number; name: string; stock: number; imageUrl: string | null }[]
   catalog: { productCount: number; outOfStock: number; stockValue: number }
 }
 

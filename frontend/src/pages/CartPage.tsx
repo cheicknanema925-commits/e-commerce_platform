@@ -1,4 +1,5 @@
 import { Link } from 'react-router'
+import { CartItemThumbnail, QuantityStepper } from '../components/CartLine.tsx'
 import { ErrorMessage } from '../components/ErrorMessage.tsx'
 import { useCart, useChangeQuantity, useRemoveFromCart } from '../hooks/useCart.ts'
 import { formatPrice } from '../lib/format.ts'
@@ -16,73 +17,66 @@ export function CartPage() {
     return <ErrorMessage error={cart.error} />
   }
 
+  const count = cart.data.items.reduce((sum, item) => sum + item.quantity, 0)
   return (
     <>
-      <h1 className="text-3xl font-bold tracking-tight">Panier</h1>
+      <h1 className="text-[clamp(28px,3.4vw,40px)] font-bold tracking-tight">Mon panier</h1>
       {cart.data.items.length === 0 ? (
-        <div className="mt-6 rounded-lg border border-dashed border-stone-300 p-8 text-center">
-          <p className="text-stone-600">Votre panier est vide.</p>
-          <Link to="/" className="mt-4 inline-block font-medium text-brand-700 hover:underline">
-            Découvrir le catalogue
+        <div className="mt-6 rounded-[18px] border border-dashed border-stone-300 bg-white p-12 text-center text-stone-600">
+          <p aria-hidden="true" className="text-5xl">
+            🧺
+          </p>
+          <h2 className="mt-3 text-lg font-semibold text-stone-900">Votre panier est vide</h2>
+          <p className="mt-1">Ajoutez un produit pour commencer votre commande.</p>
+          <Link to="/" className="mt-5 inline-block rounded-full bg-safran px-6 py-3 font-bold text-stone-900 hover:bg-safran-light">
+            Voir les produits
           </Link>
         </div>
       ) : (
-        <div className="mt-6 grid gap-8 lg:grid-cols-3">
-          <ul className="divide-y divide-stone-200 rounded-lg border border-stone-200 bg-white lg:col-span-2">
+        <div className="mt-6 grid gap-6 lg:grid-cols-3">
+          <ul className="rounded-lg border border-stone-200 bg-white px-5 lg:col-span-2">
             {cart.data.items.map((item) => (
-              <li key={item.productId} className="flex flex-wrap items-center gap-4 p-4">
-                <div className="min-w-48 flex-1">
-                  <Link to={`/produits/${item.productId}`} className="font-medium hover:underline">
-                    {item.productName}
-                  </Link>
-                  <p className="text-sm text-stone-600">{formatPrice(item.unitPrice)} l'unité</p>
+              <li key={item.productId} className="flex gap-4 border-b border-stone-200 py-4 last:border-b-0">
+                <CartItemThumbnail item={item} className="size-20" />
+                <div className="flex flex-1 flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <Link to={`/produits/${item.productId}`} className="font-semibold hover:underline">
+                      {item.productName}
+                    </Link>
+                    <p className="text-sm text-stone-600">{formatPrice(item.unitPrice)} l'unité</p>
+                    <div className="mt-2.5 flex items-center gap-4">
+                      <QuantityStepper item={item} onChange={(quantity) => changeQuantity.mutate({ productId: item.productId, quantity })} />
+                      <button
+                        type="button"
+                        onClick={() => removeFromCart.mutate(item.productId)}
+                        className="text-[13px] font-medium text-bissap underline underline-offset-2"
+                      >
+                        Supprimer<span className="sr-only"> {item.productName}</span>
+                      </button>
+                    </div>
+                  </div>
+                  <p className="font-bold">{formatPrice(item.subtotal)}</p>
                 </div>
-                <label className="sr-only" htmlFor={`quantite-${item.productId}`}>
-                  Quantité de {item.productName}
-                </label>
-                <input
-                  id={`quantite-${item.productId}`}
-                  type="number"
-                  min={1}
-                  max={99}
-                  defaultValue={item.quantity}
-                  key={item.quantity}
-                  onBlur={(event) => {
-                    const quantity = Number(event.target.value)
-                    if (quantity !== item.quantity && quantity >= 1 && quantity <= 99) {
-                      changeQuantity.mutate({ productId: item.productId, quantity })
-                    }
-                  }}
-                  className="w-20 rounded-md border border-stone-300 px-2 py-1"
-                />
-                <p className="w-28 text-right font-semibold">{formatPrice(item.subtotal)}</p>
-                <button
-                  type="button"
-                  onClick={() => removeFromCart.mutate(item.productId)}
-                  className="text-sm font-medium text-red-700 hover:underline"
-                >
-                  Retirer<span className="sr-only"> {item.productName}</span>
-                </button>
               </li>
             ))}
           </ul>
 
           <aside className="h-fit rounded-lg border border-stone-200 bg-white p-6">
             <h2 className="text-lg font-semibold">Récapitulatif</h2>
-            <p className="mt-4 flex justify-between text-lg">
-              <span>Total</span>
-              <span className="font-bold text-brand-800">{formatPrice(cart.data.total)}</span>
+            <p className="mt-4 flex justify-between text-lg font-bold">
+              <span>
+                Total ({count} article{count > 1 ? 's' : ''})
+              </span>
+              <span>{formatPrice(cart.data.total)}</span>
             </p>
-            <p className="mt-1 text-xs text-stone-500">Prix actuels du catalogue, confirmés au moment de la commande.</p>
+            <p className="mt-1 text-xs text-stone-600">Prix actuels du catalogue, confirmés au moment de la commande.</p>
             <div aria-live="polite" className="mt-4">
               {mutationError && <ErrorMessage error={mutationError} />}
             </div>
-            <Link
-              to="/commande"
-              className="mt-4 block rounded-md bg-brand-700 px-4 py-3 text-center font-medium text-white hover:bg-brand-800"
-            >
+            <Link to="/commande" className="mt-4 block rounded-full bg-safran py-3.5 text-center font-bold text-stone-900 hover:bg-safran-light">
               Passer la commande
             </Link>
+            <p className="mt-2.5 text-center text-[13px] text-stone-600">Vous pourrez aussi payer en espèces au livreur.</p>
           </aside>
         </div>
       )}

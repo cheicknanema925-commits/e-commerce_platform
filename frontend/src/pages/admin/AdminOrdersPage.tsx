@@ -1,30 +1,34 @@
 import { type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router'
+import type { AdminOrder, OrderStatus } from '../../api/types.ts'
 import { ErrorMessage } from '../../components/ErrorMessage.tsx'
+import { OrderStatusBadge } from '../../components/OrderStatusBadge.tsx'
 import { Pagination } from '../../components/Pagination.tsx'
-import { OrderStatusBadge } from '../../components/admin/OrderStatusBadge.tsx'
-import { PageHeader } from '../../components/admin/PageHeader.tsx'
-import { useAdminOrders, useStats } from '../../hooks/useAdmin.ts'
-import { formatDate, formatPrice } from '../../lib/format.ts'
-import { ORDER_VIEWS, findOrderView, orderViewCount } from '../../lib/orderViews.ts'
+import { PaymentCell } from '../../components/admin/PaymentCell.tsx'
+import { filterInput, Kpi, KpiStrip, PageHeader, TableCard, td, th } from '../../components/admin/ui.tsx'
+import { useAdminOrders, useChangeOrderStatus, useStats } from '../../hooks/useAdmin.ts'
+import { formatDate, formatNumber, formatPrice } from '../../lib/format.ts'
+import { adminActionLabel } from '../../lib/labels.ts'
+import { findOrderView, ORDER_VIEWS, orderViewCount, pendingActionCount } from '../../lib/orderViews.ts'
+import { useToast } from '../../lib/toast.ts'
 
-// Filtres dans l'URL (?vue=a-confirmer&q=diop&page=1) : le tableau de bord peut pointer directement sur un onglet
+// Filtres dans l'URL (?vue=a-confirmer&paiement=CASH_ON_DELIVERY&q=diop) : le tableau de bord peut y renvoyer
 export function AdminOrdersPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const view = findOrderView(searchParams.get('vue'))
+  const paymentParam = searchParams.get('paiement')
+  const paymentMethod = view.paymentMethod ?? (paymentParam === 'ONLINE' || paymentParam === 'CASH_ON_DELIVERY' ? paymentParam : undefined)
   const q = searchParams.get('q') ?? undefined
   const page = Number(searchParams.get('page') ?? 0)
-  const orders = useAdminOrders({ status: view.status, paymentMethod: view.paymentMethod, q, page })
+  const orders = useAdminOrders({ statuses: view.status ? [view.status] : undefined, paymentMethod, q, page })
   const stats = useStats()
 
-  function update(changes: Record<string, string | undefined>) {
+  function update(name: string, value: string) {
     const next = new URLSearchParams(searchParams)
-    for (const [key, value] of Object.entries(changes)) {
-      if (value) {
-        next.set(key, value)
-      } else {
-        next.delete(key)
-      }
+    if (value) {
+      next.set(name, value)
+    } else {
+      next.delete(name)
     }
     next.delete('page')
     setSearchParams(next)
@@ -32,98 +36,62 @@ export function AdminOrdersPage() {
 
   function onSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    update({ q: String(new FormData(event.currentTarget).get('q') ?? '').trim() })
+    update('q', String(new FormData(event.currentTarget).get('q') ?? '').trim())
   }
 
+  const count = (status: OrderStatus) => stats.data?.ordersByStatus.find((s) => s.status === status)?.count ?? 0
   return (
     <>
-      <PageHeader title="Commandes" description="Confirmez, préparez, expédiez et livrez les commandes des clients." />
+      <PageHeader title="Suivi des commandes" description="Suivez les achats et mettez à jour leur statut de traitement." />
 
-      <nav aria-label="Filtrer par étape" className="-mx-1 mb-4 flex gap-1 overflow-x-auto pb-1">
-        {ORDER_VIEWS.map((v) => {
-          const count = stats.data ? orderViewCount(v, stats.data) : null
-          const selected = v.key === view.key
-          return (
-            <Link
-              key={v.key}
-              to={`?${new URLSearchParams({ ...(v.key !== 'toutes' ? { vue: v.key } : {}), ...(q ? { q } : {}) })}`}
-              aria-current={selected ? 'page' : undefined}
-              className={`flex shrink-0 items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium ${
-                selected ? 'bg-stone-900 text-white' : 'text-stone-700 hover:bg-stone-200'
-              }`}
-            >
-              {v.label}
-              {count !== null && (
-                <span
-                  className={`rounded-full px-2 text-xs tabular-nums ${
-                    v.actionable && count > 0 ? 'bg-amber-400 font-bold text-stone-900' : selected ? 'bg-stone-700' : 'bg-stone-200'
-                  }`}
-                >
-                  {count}
-                </span>
-              )}
-            </Link>
-          )
-        })}
-      </nav>
+      {stats.data && (
+        <KpiStrip>
+          <Kpi label="Toutes les commandes" value={formatNumber(stats.data.orderCount)} detail="Depuis l’ouverture" />
+          <Kpi label="À traiter" value={formatNumber(pendingActionCount(stats.data))} detail={<span className="font-semibold text-bissap">À confirmer, préparer ou livrer</span>} />
+          <Kpi label="En livraison" value={formatNumber(count('SHIPPED'))} detail="En cours d’acheminement" />
+          <Kpi label="Livrées" value={formatNumber(count('DELIVERED'))} detail={<span className="font-semibold text-kola">Commandes finalisées</span>} />
+        </KpiStrip>
+      )}
 
-      <form role="search" onSubmit={onSearch} className="mb-4 flex max-w-xl gap-2">
-        <label htmlFor="recherche-commande" className="sr-only">
-          Rechercher une commande
-        </label>
-        <input
-          id="recherche-commande"
-          name="q"
-          type="search"
-          key={q}
-          defaultValue={q}
-          maxLength={100}
-          placeholder="N° de commande, nom ou email du client"
-          className="flex-1 rounded-md border border-stone-300 bg-white px-3 py-2"
-        />
-        <button type="submit" className="rounded-md bg-stone-900 px-4 py-2 font-medium text-white hover:bg-stone-700">
-          Rechercher
-        </button>
-      </form>
+      <div className="flex flex-wrap gap-2.5">
+        <form role="search" onSubmit={onSearch} className="flex flex-1 basis-full sm:flex-none sm:basis-auto">
+          <label htmlFor="recherche-commande" className="sr-only">
+            Rechercher une commande
+          </label>
+          <input
+            id="recherche-commande"
+            name="q"
+            type="search"
+            key={q}
+            defaultValue={q}
+            maxLength={100}
+            placeholder="N° de commande, nom ou email du client"
+            className={`${filterInput} w-full sm:w-80`}
+          />
+        </form>
+        <select aria-label="Statut" value={view.key === 'toutes' ? '' : view.key} onChange={(event) => update('vue', event.target.value)} className={filterInput}>
+          {ORDER_VIEWS.map((v) => (
+            <option key={v.key} value={v.key === 'toutes' ? '' : v.key}>
+              {v.key === 'toutes' ? 'Tous les statuts' : v.label}
+              {stats.data && ` (${orderViewCount(v, stats.data)})`}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="Moyen de paiement"
+          value={paymentMethod ?? ''}
+          disabled={view.paymentMethod !== undefined}
+          onChange={(event) => update('paiement', event.target.value)}
+          className={filterInput}
+        >
+          <option value="">Tous les paiements</option>
+          <option value="ONLINE">En ligne (Wave, Orange Money, carte)</option>
+          <option value="CASH_ON_DELIVERY">Espèces à la livraison</option>
+        </select>
+      </div>
 
       {orders.isError && <ErrorMessage error={orders.error} />}
-      <div className={`overflow-x-auto rounded-lg border border-stone-200 bg-white transition-opacity ${orders.isPlaceholderData ? 'opacity-60' : ''}`}>
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-stone-200 bg-stone-50 text-stone-600">
-            <tr>
-              <th scope="col" className="px-4 py-3 font-medium">Commande</th>
-              <th scope="col" className="px-4 py-3 font-medium">Client</th>
-              <th scope="col" className="px-4 py-3 font-medium">Articles</th>
-              <th scope="col" className="px-4 py-3 font-medium">Paiement</th>
-              <th scope="col" className="px-4 py-3 font-medium">Statut</th>
-              <th scope="col" className="px-4 py-3 text-right font-medium">Total</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-stone-100">
-            {orders.data?.content.map((order) => (
-              <tr key={order.id} className="hover:bg-stone-50">
-                <td className="px-4 py-3">
-                  <Link to={`/admin/commandes/${order.id}`} className="font-semibold text-brand-700 hover:underline">
-                    n° {order.id}
-                  </Link>
-                  <p className="text-xs text-stone-500">{formatDate(order.createdAt)}</p>
-                </td>
-                <td className="px-4 py-3">
-                  <p className="font-medium text-stone-900">{order.customerName}</p>
-                  <p className="text-xs text-stone-500">{order.customerEmail}</p>
-                </td>
-                <td className="px-4 py-3 tabular-nums text-stone-700">{order.items.reduce((sum, item) => sum + item.quantity, 0)}</td>
-                <td className="px-4 py-3 text-stone-700">{order.paymentMethod === 'ONLINE' ? 'En ligne' : 'Espèces'}</td>
-                <td className="px-4 py-3">
-                  <OrderStatusBadge status={order.status} paymentMethod={order.paymentMethod} />
-                </td>
-                <td className="px-4 py-3 text-right font-semibold tabular-nums">{formatPrice(order.totalAmount)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {orders.data?.content.length === 0 && <p className="p-8 text-center text-stone-600">Aucune commande ne correspond.</p>}
-      </div>
+      <OrdersTable orders={orders.data?.content} total={orders.data?.totalElements} dimmed={orders.isPlaceholderData} />
       {orders.data && (
         <Pagination
           page={orders.data.page}
@@ -136,5 +104,98 @@ export function AdminOrdersPage() {
         />
       )}
     </>
+  )
+}
+
+function OrdersTable({ orders, total, dimmed }: { orders?: AdminOrder[]; total?: number; dimmed: boolean }) {
+  const changeStatus = useChangeOrderStatus()
+  const toast = useToast()
+
+  function onChange(order: AdminOrder, target: OrderStatus) {
+    if (target === 'CANCELLED' && !window.confirm(`Annuler la commande n° ${order.id} ? Les articles seront remis en stock.`)) {
+      return
+    }
+    changeStatus.mutate(
+      { id: order.id, status: target },
+      {
+        onSuccess: (updated) => {
+          const cash = updated.paymentMethod === 'CASH_ON_DELIVERY' && target === 'DELIVERED'
+          toast(cash ? `Commande n° ${order.id} livrée : ${formatPrice(order.totalAmount)} en espèces encaissés.` : `Commande n° ${order.id} mise à jour.`)
+        },
+        onError: (error) => toast(error.message),
+      },
+    )
+  }
+
+  return (
+    <TableCard title="Liste des commandes" count={total}>
+      <table className={`w-full text-sm transition-opacity ${dimmed ? 'opacity-60' : ''}`}>
+        <thead>
+          <tr>
+            <th scope="col" className={th}>Commande</th>
+            <th scope="col" className={th}>Client</th>
+            <th scope="col" className={th}>Date</th>
+            <th scope="col" className={`${th} text-right`}>Articles</th>
+            <th scope="col" className={`${th} text-right`}>Total</th>
+            <th scope="col" className={th}>Paiement</th>
+            <th scope="col" className={th}>Statut</th>
+            <th scope="col" className={th}>Changer le statut</th>
+          </tr>
+        </thead>
+        <tbody>
+          {orders?.map((order) => (
+            <tr key={order.id} className="hover:bg-stone-50">
+              <td className={td}>
+                <Link to={`/admin/commandes/${order.id}`} className="font-semibold text-brand-700 hover:underline">
+                  n° {order.id}
+                </Link>
+              </td>
+              <td className={td}>
+                <span className="block font-medium">{order.customerName}</span>
+                <span className="text-xs text-stone-600">{order.customerEmail}</span>
+              </td>
+              <td className={td}>{formatDate(order.createdAt)}</td>
+              <td className={`${td} text-right tabular-nums`}>{order.items.reduce((sum, item) => sum + item.quantity, 0)}</td>
+              <td className={`${td} text-right font-semibold tabular-nums`}>{formatPrice(order.totalAmount)}</td>
+              <td className={td}>
+                <PaymentCell order={order} />
+              </td>
+              <td className={td}>
+                <OrderStatusBadge status={order.status} paymentMethod={order.paymentMethod} />
+              </td>
+              <td className={td}>
+                {/* Seules les transitions permises par la machine à états du serveur sont proposées */}
+                {order.nextStatuses.length === 0 ? (
+                  <span className="text-stone-500">{order.status === 'CREATED' ? 'Attente du paiement' : '—'}</span>
+                ) : (
+                  <>
+                    <label htmlFor={`statut-${order.id}`} className="sr-only">
+                      Changer le statut de la commande n° {order.id}
+                    </label>
+                    <select
+                      id={`statut-${order.id}`}
+                      value=""
+                      disabled={changeStatus.isPending}
+                      onChange={(event) => onChange(order, event.target.value as OrderStatus)}
+                      className="rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-[13px] font-medium"
+                    >
+                      <option value="" disabled>
+                        Choisir une action…
+                      </option>
+                      {order.nextStatuses.map((target) => (
+                        <option key={target} value={target}>
+                          {adminActionLabel(target, order.paymentMethod)}
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {orders?.length === 0 && <p className="p-9 text-center text-stone-600">Aucune commande ne correspond à ces filtres.</p>}
+    </TableCard>
   )
 }

@@ -15,3 +15,19 @@ export function imageFileError(file: File): string | null {
   }
   return null
 }
+
+// Tri des fichiers choisis : ceux qu'on peut envoyer, et un message pour chacun des autres
+export function selectImages(files: File[], remaining: number): { valid: File[]; errors: string[] } {
+  const errors: string[] = []
+  if (files.length > remaining) {
+    errors.push(`Seulement ${Math.max(0, remaining)} photo(s) de plus possible(s) : ${MAX_IMAGES_PER_PRODUCT} au maximum par produit.`)
+  }
+  const valid = files.slice(0, Math.max(0, remaining)).filter((file) => {
+    const error = imageFileError(file)
+    if (error) {
+      errors.push(error)
+    }
+    return error === null
+  })
+  return { valid, errors }
+}

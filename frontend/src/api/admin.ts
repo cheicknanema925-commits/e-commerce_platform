@@ -24,14 +24,16 @@ export function fetchSales(period: SalesPeriod): Promise<SalesReport> {
 }
 
 export type AdminOrderFilters = {
-  status?: OrderStatus
+  statuses?: OrderStatus[]
   paymentMethod?: PaymentMethod
   q?: string
   page: number
+  size?: number
 }
 
-export function fetchAdminOrders(filters: AdminOrderFilters): Promise<Page<AdminOrder>> {
-  return apiGet('/admin/orders', { ...filters, size: 20 })
+// Plusieurs statuts séparés par des virgules (?status=CREATED,PREPARING) : Spring en fait une liste
+export function fetchAdminOrders({ statuses, size = 20, ...filters }: AdminOrderFilters): Promise<Page<AdminOrder>> {
+  return apiGet('/admin/orders', { ...filters, status: statuses?.join(','), size })
 }
 
 export function fetchAdminOrder(id: number): Promise<AdminOrder> {

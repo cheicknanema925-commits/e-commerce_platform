@@ -29,14 +29,14 @@ export function SimulatedPaymentPage() {
   }
 
   return (
-    <div className="mx-auto max-w-md">
-      <p className="rounded-md bg-amber-100 p-3 text-sm text-amber-900">
+    <div className="mx-auto max-w-[420px] py-6">
+      <p className="rounded-lg bg-safran-soft p-3 text-sm font-medium text-safran-ink">
         Page de paiement <strong>simulée</strong> (environnement de développement) : aucun argent réel.
       </p>
-      <div className="mt-4 rounded-lg border border-stone-200 bg-white p-6 text-center">
+      <div className="mt-4 rounded-[18px] border border-stone-200 bg-white p-7 text-center">
         <h1 className="text-2xl font-bold">Paiement mobile</h1>
         <p className="mt-2 text-stone-600">Commande n° {orderId}</p>
-        {order.data && <p className="mt-4 text-3xl font-bold text-brand-800">{formatPrice(order.data.totalAmount)}</p>}
+        {order.data && <p className="mt-4 text-3xl font-extrabold tracking-tight">{formatPrice(order.data.totalAmount)}</p>}
         {error !== null && (
           <div className="mt-4">
             <ErrorMessage error={error} />
@@ -47,7 +47,7 @@ export function SimulatedPaymentPage() {
             type="button"
             disabled={pending}
             onClick={() => finish('paye')}
-            className="rounded-md bg-brand-700 px-4 py-3 font-medium text-white hover:bg-brand-800 disabled:opacity-60"
+            className="rounded-full bg-safran py-3.5 font-bold text-stone-900 hover:bg-safran-light disabled:opacity-60"
           >
             Valider le paiement
           </button>
@@ -55,7 +55,7 @@ export function SimulatedPaymentPage() {
             type="button"
             disabled={pending}
             onClick={() => finish('annule')}
-            className="rounded-md border border-stone-300 px-4 py-2 font-medium hover:bg-stone-100"
+            className="rounded-full border border-stone-200 py-3 font-semibold hover:border-bissap hover:text-bissap"
           >
             Annuler
           </button>

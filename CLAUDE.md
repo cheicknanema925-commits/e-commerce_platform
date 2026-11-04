@@ -42,14 +42,23 @@ java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod  
   contre les redirections ouvertes (?retour=…)
 - Paiement en ligne : redirection vers `checkoutUrl` du fournisseur ; au retour, on attend la confirmation du serveur
   (polling) ; en dev, `/paiement-simule/:référence` imite la page du fournisseur
-- Back-office `/admin` : route à part, hors du `Layout` de la boutique (cadre `AdminLayout`, menu latéral), sous
-  `RequireAuth` + `RequireAdmin` ; tableau de bord (ventes par jour/mois, à traiter, stock), commandes (onglets
-  `lib/orderViews.ts`, recherche ; boutons construits depuis `nextStatuses` de l'API, jamais recalculés), produits
-  (CRUD + photos), clients
+- Design « Shop Africa » d'après les maquettes de l'utilisateur (`shop_africa.html`, `shop_africa_admin.html`) :
+  jetons dans `index.css` (`brand` = indigo, `stone` = gris bleutés, `safran` boutons/prix, `bissap` alertes,
+  `kola` stock/confirmations, `tint-*` fonds des rayons) ; police Bricolage Grotesque auto-hébergée (`@fontsource-variable`,
+  aucun appel à Google Fonts) ; `Logo`, `Icon`, `PriceTag` (étiquette de prix), `lib/categories.ts` (emoji + couleur par rayon)
+- Boutique : en-tête collant (recherche, rayons), étal d'accueil, panier en tiroir (`CartDrawer`, `<dialog>` natif),
+  toasts (`ToastProvider` + `useToast`), localisation de livraison (`DeliveryLocation` : géolocalisation du navigateur,
+  carte OpenStreetMap intégrée, message clair si refus), frise de suivi (`DeliveryTracking`)
+- Back-office `/admin` : route à part, hors du `Layout` de la boutique (cadre `AdminLayout` : barre latérale indigo,
+  icônes seules sur mobile), sous `RequireAuth` + `RequireAdmin` ; pages Vue d'ensemble, Produits, Ajouter un article
+  (photos choisies avant l'enregistrement, envoyées juste après), Commandes (changement de statut limité aux
+  `nextStatuses` de l'API), Paiements (espèces à récupérer), Analyse des ventes, Clients ; briques dans `components/admin/ui.tsx`
+- Éléments des maquettes non repris faute de données réelles : favoris, infolettre, prix barré/promotions, marque, référence,
+  livreurs, paramètres, export ; à ajouter comme vraies fonctionnalités si besoin
 - Graphiques : SVG écrit à la main (`components/admin/SalesChart.tsx`), une couleur par série, info-bulle au survol ET
   au clavier, tableau des données à côté ; pas de bibliothèque de graphiques
+- Tableaux qui défilent : conteneur `relative overflow-x-auto` (sinon les libellés `sr-only` élargissent la page)
 - Envoi de fichiers : `FormData` passé tel quel à `apiRequest` (le navigateur écrit le Content-Type multipart)
-- Design : l'utilisateur fournira ses propres maquettes ; d'ici là, pages fonctionnelles et propres
 - CI : job `frontend` (npm ci, lint, test, build)
 
 ## Profils
@@ -117,6 +126,8 @@ java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod  
   (`GET /api/admin/stats`, `/stats/sales?period=DAY|MONTH`) et clients (`GET /api/admin/customers`) calculés en base
   (projections, `date_trunc` à l'heure `Africa/Dakar`, périodes vides complétées en Java), jamais en chargeant toutes
   les commandes en mémoire ; un produit déjà commandé ne se supprime pas (clé étrangère → 409)
+- Statistiques : panier moyen, ventes par catégorie, clients fidèles (≥ 2 commandes), espèces à récupérer
+  (commandes en espèces ni livrées ni annulées) ; `GET /api/admin/orders?status=CREATED,PREPARING` accepte plusieurs statuts
 - Recherche texte : `common/LikePatterns.contains` (échappe `%` et `_`) pour tous les LIKE
 
 ## Photos des produits

@@ -1,26 +1,37 @@
-import { type FormEvent } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
+import { type FormEvent, useState } from 'react'
+import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { ErrorMessage } from '../../components/ErrorMessage.tsx'
-import { FormField } from '../../components/FormField.tsx'
-import { PageHeader } from '../../components/admin/PageHeader.tsx'
+import { FormField, inputClass } from '../../components/FormField.tsx'
+import { type PendingImage, PendingImages } from '../../components/admin/PendingImages.tsx'
 import { ProductImagesEditor } from '../../components/admin/ProductImagesEditor.tsx'
-import { useCreateProduct, useUpdateProduct } from '../../hooks/useAdmin.ts'
+import { btnGhost, btnPrimary, PageHeader, Panel } from '../../components/admin/ui.tsx'
+import { useCreateProduct, useUpdateProduct, useUploadProductImage } from '../../hooks/useAdmin.ts'
 import { useCategories, useProduct } from '../../hooks/useCatalog.ts'
 import { fieldErrors } from '../../lib/forms.ts'
+import { MAX_IMAGES_PER_PRODUCT, selectImages } from '../../lib/images.ts'
+import { useToast } from '../../lib/toast.ts'
 
-// Même page pour créer (/admin/produits/nouveau) et modifier (/admin/produits/:id).
-// Les photos ont besoin d'un produit existant : après la création, on arrive sur la modification pour les ajouter.
+// Après la création, la page de modification affiche les éventuels échecs d'envoi des photos
+type CreatedState = { created?: boolean; uploadErrors?: string[] }
+
+// Même page pour créer (/admin/produits/nouveau) et modifier (/admin/produits/:id)
 export function AdminProductFormPage() {
   const params = useParams()
-  const [searchParams] = useSearchParams()
+  const location = useLocation()
   const id = params.id === undefined ? null : Number(params.id)
   const product = useProduct(id ?? Number.NaN)
   const categories = useCategories()
   const create = useCreateProduct()
   const update = useUpdateProduct()
+  const upload = useUploadProductImage()
   const navigate = useNavigate()
+  const toast = useToast()
+  const [pending, setPending] = useState<PendingImage[]>([])
+  const [pendingProblems, setPendingProblems] = useState<string[]>([])
+  const [uploading, setUploading] = useState(false)
   const mutation = id === null ? create : update
   const errors = fieldErrors(mutation.error)
+  const created = (location.state as CreatedState | null) ?? {}
 
   if (product.isError || categories.isError) {
     return <ErrorMessage error={product.error ?? categories.error} />
@@ -30,124 +41,152 @@ export function AdminProductFormPage() {
     return <p className="text-stone-600">Chargement…</p>
   }
 
+  function addPending(files: File[]) {
+    const { valid, errors: problems } = selectImages(files, MAX_IMAGES_PER_PRODUCT - pending.length)
+    setPending((current) => [...current, ...valid.map((file) => ({ file, preview: URL.createObjectURL(file) }))])
+    setPendingProblems(problems)
+  }
+
+  function removePending(index: number) {
+    URL.revokeObjectURL(pending[index].preview)
+    setPending((current) => current.filter((_, i) => i !== index))
+  }
+
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
     const input = {
       categoryId: Number(form.get('categoryId')),
-      name: String(form.get('name')),
-      description: String(form.get('description') ?? '') || null,
+      name: String(form.get('name')).trim(),
+      description: String(form.get('description') ?? '').trim() || null,
       price: Number(form.get('price')),
       stock: Number(form.get('stock')),
     }
-    if (id === null) {
-      const created = await create.mutateAsync(input)
-      navigate(`/admin/produits/${created.id}?nouveau=1`, { replace: true })
-    } else {
+    if (id !== null) {
       await update.mutateAsync({ id, product: input })
+      toast('Modifications enregistrées')
+      return
     }
+    const product = await create.mutateAsync(input)
+    // Les photos partent une par une, maintenant que le produit a un id
+    setUploading(true)
+    const uploadErrors: string[] = []
+    for (const image of pending) {
+      try {
+        await upload.mutateAsync({ productId: product.id, file: image.file })
+      } catch (error) {
+        uploadErrors.push(`${image.file.name} : ${error instanceof Error ? error.message : 'envoi impossible'}`)
+      }
+    }
+    toast(`Produit enregistré : ${product.name}`)
+    navigate(`/admin/produits/${product.id}`, { replace: true, state: { created: true, uploadErrors } satisfies CreatedState })
   }
 
   const current = product.data
+  const busy = mutation.isPending || uploading
   return (
     <>
-      <Link to="/admin/produits" className="text-sm font-medium text-brand-700 hover:underline">
-        ← Produits
-      </Link>
-      <div className="mt-2">
-        <PageHeader
-          title={current ? current.name : 'Nouveau produit'}
-          actions={
-            current && (
-              <Link to={`/produits/${current.id}`} className="rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-medium hover:bg-stone-100">
+      <PageHeader
+        title={current ? 'Modifier un article' : 'Ajouter un article'}
+        description={current ? current.name : 'Renseignez les informations du produit à mettre en vente.'}
+        actions={
+          <>
+            {current && (
+              <Link to={`/produits/${current.id}`} className={btnGhost}>
                 Voir dans la boutique
               </Link>
-            )
-          }
-        />
-      </div>
+            )}
+            <Link to="/admin/produits" className={btnGhost}>
+              Retour au catalogue
+            </Link>
+          </>
+        }
+      />
 
-      <div aria-live="polite">
-        {searchParams.get('nouveau') === '1' && !update.isSuccess && (
-          <p className="mb-4 rounded-md border border-brand-200 bg-brand-50 p-4 text-brand-900">
-            Produit créé. Ajoutez maintenant ses photos.
-          </p>
-        )}
-        {update.isSuccess && (
-          <p className="mb-4 rounded-md border border-brand-200 bg-brand-50 p-4 text-brand-900">Modifications enregistrées.</p>
-        )}
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-5">
-        <form
-          key={id ?? 'nouveau'}
-          onSubmit={(event) => onSubmit(event).catch(() => undefined)}
-          className="flex flex-col gap-4 rounded-lg border border-stone-200 bg-white p-6 lg:col-span-3"
-        >
-          <h2 className="font-semibold">Informations</h2>
-          {mutation.isError && Object.keys(errors).length === 0 && <ErrorMessage error={mutation.error} />}
-          <FormField name="name" label="Nom" required maxLength={100} defaultValue={current?.name} error={errors.name} />
-          <div className="flex flex-col gap-1">
-            <label htmlFor="categoryId" className="text-sm font-medium text-stone-700">
-              Catégorie
-            </label>
-            <select id="categoryId" name="categoryId" required defaultValue={current?.categoryId ?? ''} className="rounded-md border border-stone-300 bg-white px-3 py-2">
-              <option value="" disabled>
-                Choisir…
-              </option>
-              {categories.data.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
+      {created.created && id !== null && (
+        <div aria-live="polite" className="mb-4 space-y-2">
+          <p className="rounded-lg bg-kola-soft p-4 text-sm font-medium text-kola">Produit créé et mis en vente.</p>
+          {created.uploadErrors && created.uploadErrors.length > 0 && (
+            <ul role="alert" className="rounded-lg border border-bissap/30 bg-bissap-soft p-3 text-sm text-bissap">
+              {created.uploadErrors.map((problem) => (
+                <li key={problem}>{problem}</li>
               ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="description" className="text-sm font-medium text-stone-700">
-              Description
-            </label>
-            <textarea
-              id="description"
-              name="description"
-              rows={6}
-              maxLength={1000}
-              defaultValue={current?.description ?? ''}
-              className="rounded-md border border-stone-300 px-3 py-2"
-            />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField name="price" label="Prix (F CFA)" type="number" required min={1} step={1} defaultValue={current?.price} error={errors.price} />
-            <FormField
-              name="stock"
-              label="Stock"
-              type="number"
-              required
-              min={0}
-              step={1}
-              defaultValue={current?.stock ?? 0}
-              hint="0 = retiré de la vente (rupture)"
-              error={errors.stock}
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={mutation.isPending}
-            className="self-start rounded-md bg-brand-700 px-5 py-2.5 font-medium text-white hover:bg-brand-800 disabled:opacity-60"
-          >
-            {mutation.isPending ? 'Enregistrement…' : id === null ? 'Créer le produit' : 'Enregistrer'}
-          </button>
+            </ul>
+          )}
+        </div>
+      )}
+
+      <div className="grid items-start gap-4 xl:grid-cols-[1.3fr_0.7fr]">
+        <form key={id ?? 'nouveau'} id="formulaire-produit" onSubmit={(event) => onSubmit(event).catch(() => setUploading(false))}>
+          <Panel title="Informations générales">
+            <div className="flex flex-col gap-3.5">
+              {mutation.isError && Object.keys(errors).length === 0 && <ErrorMessage error={mutation.error} />}
+              <FormField name="name" label="Nom du produit *" required maxLength={100} defaultValue={current?.name} placeholder="Ex. Boubou en bazin brodé" error={errors.name} />
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="categoryId" className="text-sm font-semibold">
+                  Catégorie *
+                </label>
+                <select id="categoryId" name="categoryId" required defaultValue={current?.categoryId ?? ''} className={`${inputClass} border-stone-200`}>
+                  <option value="" disabled>
+                    Sélectionner
+                  </option>
+                  {categories.data.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="description" className="text-sm font-semibold">
+                  Description du produit
+                </label>
+                <textarea
+                  id="description"
+                  name="description"
+                  rows={5}
+                  maxLength={1000}
+                  defaultValue={current?.description ?? ''}
+                  placeholder="Caractéristiques, dimensions, matière, garantie…"
+                  className={`${inputClass} resize-y border-stone-200`}
+                />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <FormField name="price" label="Prix de vente (FCFA) *" type="number" required min={1} step={1} defaultValue={current?.price} placeholder="Ex. 25000" error={errors.price} />
+                <FormField
+                  name="stock"
+                  label="Quantité en stock *"
+                  type="number"
+                  required
+                  min={0}
+                  step={1}
+                  defaultValue={current?.stock ?? ''}
+                  placeholder="Ex. 25"
+                  hint="0 = rupture : le produit reste visible mais ne peut plus être commandé."
+                  error={errors.stock}
+                />
+              </div>
+              <p className="text-[13px] text-stone-600">Les champs marqués d’un * sont obligatoires.</p>
+            </div>
+          </Panel>
         </form>
 
-        <div className="lg:col-span-2">
+        <div className="flex flex-col gap-4">
           {current ? (
             <ProductImagesEditor product={current} />
           ) : (
-            <section className="rounded-lg border border-dashed border-stone-300 bg-white p-6 text-sm text-stone-600">
-              <h2 className="font-semibold text-stone-900">Photos</h2>
-              <p className="mt-1">Créez d'abord le produit : vous pourrez ensuite ajouter jusqu'à 8 photos.</p>
-            </section>
+            <PendingImages images={pending} onAdd={addPending} onRemove={removePending} problems={pendingProblems} />
           )}
         </div>
+      </div>
+
+      <div className="mt-4 flex justify-end gap-2.5">
+        <Link to="/admin/produits" className={btnGhost}>
+          Annuler
+        </Link>
+        <button type="submit" form="formulaire-produit" disabled={busy} className={btnPrimary}>
+          {uploading ? 'Envoi des photos…' : mutation.isPending ? 'Enregistrement…' : 'Enregistrer le produit'}
+        </button>
       </div>
     </>
   )

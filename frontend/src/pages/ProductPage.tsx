@@ -2,10 +2,13 @@ import { Link, useParams } from 'react-router'
 import { ApiError } from '../api/client.ts'
 import { AddToCart } from '../components/AddToCart.tsx'
 import { ErrorMessage } from '../components/ErrorMessage.tsx'
+import { Icon } from '../components/Icon.tsx'
+import { PriceTag } from '../components/PriceTag.tsx'
 import { ProductGallery } from '../components/ProductGallery.tsx'
 import { StarRating } from '../components/StarRating.tsx'
-import { useProduct, useRating, useReviews } from '../hooks/useCatalog.ts'
-import { formatDate, formatPrice } from '../lib/format.ts'
+import { useCategories, useProduct, useRating, useReviews } from '../hooks/useCatalog.ts'
+import { formatDate } from '../lib/format.ts'
+import { stockText } from '../lib/stock.ts'
 import { NotFoundPage } from './NotFoundPage.tsx'
 
 export function ProductPage() {
@@ -13,6 +16,7 @@ export function ProductPage() {
   const product = useProduct(id)
   const rating = useRating(id)
   const reviews = useReviews(id)
+  const categories = useCategories()
 
   if (!Number.isInteger(id) || (product.error instanceof ApiError && product.error.status === 404)) {
     return <NotFoundPage />
@@ -24,49 +28,98 @@ export function ProductPage() {
     return <p className="text-stone-600">Chargement du produit…</p>
   }
 
-  const { name, categoryName, description, price, stock } = product.data
+  const { name, categoryId, categoryName, description, price, stock } = product.data
+  const slug = categories.data?.find((c) => c.id === categoryId)?.slug
+  const stockInfo = stockText(stock)
   return (
     <>
-      <Link to="/" className="text-sm font-medium text-brand-700 hover:underline">
-        ← Retour au catalogue
-      </Link>
+      <nav aria-label="Fil d'Ariane" className="text-sm text-stone-600">
+        <ol className="flex flex-wrap items-center gap-1.5">
+          <li>
+            <Link to="/" className="hover:text-brand-700 hover:underline">
+              Accueil
+            </Link>
+          </li>
+          <li aria-hidden="true">/</li>
+          <li>
+            {slug ? (
+              <Link to={`/?category=${slug}`} className="hover:text-brand-700 hover:underline">
+                {categoryName}
+              </Link>
+            ) : (
+              categoryName
+            )}
+          </li>
+          <li aria-hidden="true">/</li>
+          <li aria-current="page" className="font-medium text-stone-900">
+            {name}
+          </li>
+        </ol>
+      </nav>
 
-      <article className="mt-4 grid gap-8 md:grid-cols-2">
+      <article className="mt-5 grid gap-8 rounded-[18px] border border-stone-200 bg-white p-5 sm:p-8 md:grid-cols-2">
         <ProductGallery key={product.data.id} product={product.data} />
         <div>
-          <p className="text-sm font-medium uppercase tracking-wide text-stone-500">{categoryName}</p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight">{name}</h1>
+          <p className="text-sm text-stone-600">{categoryName}</p>
+          <h1 className="mt-1 text-[clamp(28px,3.4vw,40px)] leading-tight font-bold tracking-tight">{name}</h1>
           {rating.data && rating.data.count > 0 && (
             <p className="mt-2 flex items-center gap-2 text-sm text-stone-700">
               <StarRating value={rating.data.average} />
-              <span>
+              <a href="#avis" className="hover:underline">
                 {rating.data.average.toLocaleString('fr-SN')} ({rating.data.count} avis)
-              </span>
+              </a>
             </p>
           )}
-          <p className="mt-4 text-3xl font-bold text-brand-800">{formatPrice(price)}</p>
-          <p className={`mt-1 ${stock > 0 ? 'text-stone-700' : 'font-medium text-red-700'}`}>
-            {stock > 0 ? `En stock (${stock} disponible${stock > 1 ? 's' : ''})` : 'Rupture de stock'}
-          </p>
+          <div className="mt-5">
+            <PriceTag amount={price} size="lg" />
+          </div>
+          <p className={`mt-3 font-medium ${stockInfo.className}`}>{stock > 5 ? `En stock (${stock} disponibles)` : stockInfo.text}</p>
           <AddToCart product={product.data} />
-          {description && <p className="mt-6 leading-relaxed text-stone-700">{description}</p>}
+
+          <ul className="mt-7 space-y-3 border-t border-stone-200 pt-5 text-sm text-stone-600">
+            <li className="flex gap-3">
+              <Icon name="truck" className="size-6 text-brand-700" />
+              <span>
+                <b className="block font-semibold text-stone-900">Livraison à domicile</b>
+                Suivez chaque étape : préparation, expédition, livraison.
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <Icon name="cash" className="size-6 text-brand-700" />
+              <span>
+                <b className="block font-semibold text-stone-900">Payez comme vous voulez</b>
+                Wave, Orange Money, carte bancaire ou espèces au livreur.
+              </span>
+            </li>
+          </ul>
+
+          {description && (
+            <section aria-labelledby="description" className="mt-6">
+              <h2 id="description" className="text-lg font-semibold">
+                Description
+              </h2>
+              <p className="mt-2 leading-relaxed whitespace-pre-line text-stone-700">{description}</p>
+            </section>
+          )}
         </div>
       </article>
 
-      <section aria-labelledby="avis" className="mt-12">
-        <h2 id="avis" className="text-2xl font-bold tracking-tight">
+      <section aria-labelledby="titre-avis" id="avis" className="mt-14 scroll-mt-40">
+        <h2 id="titre-avis" className="text-[clamp(24px,2.8vw,32px)] font-bold tracking-tight">
           Avis des clients
         </h2>
         {reviews.isError && <ErrorMessage error={reviews.error} />}
         {reviews.data?.content.length === 0 && (
-          <p className="mt-4 text-stone-600">Pas encore d'avis. Les clients qui ont reçu ce produit peuvent le noter.</p>
+          <p className="mt-4 rounded-lg border border-dashed border-stone-300 bg-white p-6 text-stone-600">
+            Pas encore d'avis. Les clients qui ont reçu ce produit peuvent le noter.
+          </p>
         )}
-        <ul className="mt-4 space-y-4">
+        <ul className="mt-4 space-y-3">
           {reviews.data?.content.map((review) => (
-            <li key={review.id} className="rounded-lg border border-stone-200 bg-white p-4">
+            <li key={review.id} className="rounded-lg border border-stone-200 bg-white p-5">
               <p className="flex flex-wrap items-center gap-x-3 text-sm text-stone-600">
                 <StarRating value={review.rating} />
-                <span className="font-medium text-stone-900">{review.author}</span>
+                <span className="font-semibold text-stone-900">{review.author}</span>
                 <time dateTime={review.createdAt}>{formatDate(review.createdAt)}</time>
               </p>
               {/* Texte écrit par un client : React l'affiche comme du texte, jamais comme du HTML (pas de XSS) */}

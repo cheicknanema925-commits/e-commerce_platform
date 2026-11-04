@@ -102,7 +102,7 @@ export function SalesChart({ report, dimmed }: { report: SalesReport; dimmed: bo
                     {height > 0 && (
                       <path
                         d={columnPath(x, y(point.collected), barWidth, height)}
-                        className={active === i ? 'fill-brand-800' : 'fill-brand-600'}
+                        className={active === i ? 'fill-brand-700' : 'fill-brand-500'}
                       />
                     )}
                     {i === highest && (

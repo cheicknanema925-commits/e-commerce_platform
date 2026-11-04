@@ -2,11 +2,13 @@ import { createBrowserRouter } from 'react-router'
 import { Layout } from './components/Layout.tsx'
 import { RequireAdmin } from './components/RequireAdmin.tsx'
 import { RequireAuth } from './components/RequireAuth.tsx'
+import { AdminAnalyticsPage } from './pages/admin/AdminAnalyticsPage.tsx'
 import { AdminCustomersPage } from './pages/admin/AdminCustomersPage.tsx'
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage.tsx'
 import { AdminLayout } from './pages/admin/AdminLayout.tsx'
 import { AdminOrderPage } from './pages/admin/AdminOrderPage.tsx'
 import { AdminOrdersPage } from './pages/admin/AdminOrdersPage.tsx'
+import { AdminPaymentsPage } from './pages/admin/AdminPaymentsPage.tsx'
 import { AdminProductFormPage } from './pages/admin/AdminProductFormPage.tsx'
 import { AdminProductsPage } from './pages/admin/AdminProductsPage.tsx'
 import { CartPage } from './pages/CartPage.tsx'
@@ -62,6 +64,8 @@ export const router = createBrowserRouter([
               { path: 'produits', element: <AdminProductsPage /> },
               { path: 'produits/nouveau', element: <AdminProductFormPage /> },
               { path: 'produits/:id', element: <AdminProductFormPage /> },
+              { path: 'paiements', element: <AdminPaymentsPage /> },
+              { path: 'analyse', element: <AdminAnalyticsPage /> },
               { path: 'clients', element: <AdminCustomersPage /> },
               { path: '*', element: <NotFoundPage /> },
             ],
