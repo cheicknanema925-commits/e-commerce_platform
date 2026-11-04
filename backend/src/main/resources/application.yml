@@ -21,6 +21,11 @@ spring:
     error:
       # Jamais de stack trace dans les réponses HTTP, quel que soit le profil
       include-stacktrace: never
+  servlet:
+    multipart:
+      # Photos des produits : 5 Mo par fichier (au-delà : 413), elles sont ensuite réduites par ImageProcessor
+      max-file-size: 5MB
+      max-request-size: 6MB
 
 boutique:
   security:
@@ -49,6 +54,10 @@ boutique:
       issuer-uri: ${KEYCLOAK_ISSUER_URI:}
       # Les jetons Keycloak doivent contenir cette audience (claim « aud »)
       audience: boutique-api
+
+  catalog:
+    # Dossier des photos des produits (relatif au dossier de lancement ; en production, un volume Docker)
+    images-dir: ${IMAGES_DIR:./data/images}
 
   payment:
     # fake (développement, tests) ou paydunya. Le faux fournisseur est refusé avec le profil prod.

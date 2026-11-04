@@ -5,6 +5,7 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -28,7 +29,7 @@ class ProductServiceTest {
 	void setUp() {
 		productRepository = mock(ProductRepository.class);
 		categoryRepository = mock(CategoryRepository.class);
-		productService = new ProductService(productRepository, categoryRepository);
+		productService = new ProductService(productRepository, categoryRepository, mock(ApplicationEventPublisher.class));
 	}
 
 	@Test
