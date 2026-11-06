@@ -43,6 +43,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return problem(HttpStatus.BAD_REQUEST, "Requête invalide", ex.getMessage());
 	}
 
+	@ExceptionHandler(TooManyRequestsException.class)
+	ProblemDetail handleTooManyRequests(TooManyRequestsException ex) {
+		return problem(HttpStatus.TOO_MANY_REQUESTS, "Trop de requêtes", ex.getMessage());
+	}
+
 	@ExceptionHandler(UnauthorizedException.class)
 	ProblemDetail handleUnauthorized(UnauthorizedException ex) {
 		return problem(HttpStatus.UNAUTHORIZED, "Non authentifié", ex.getMessage());

@@ -223,6 +223,59 @@ export type ProductInput = {
 }
 
 // Format d'erreur standard de l'API (RFC 9457), produit par GlobalExceptionHandler
+// Service client : demandes (tickets) et pré-commandes
+export type TicketCategory = 'ORDER' | 'DELIVERY' | 'PAYMENT' | 'PRODUCT' | 'OTHER'
+
+export type TicketStatus = 'OPEN' | 'ANSWERED' | 'CLOSED'
+
+export type SupportTicket = {
+  id: number
+  orderId: number | null
+  category: TicketCategory
+  subject: string
+  message: string
+  status: TicketStatus
+  reply: string | null
+  createdAt: string
+  repliedAt: string | null
+}
+
+export type TicketInput = { category: TicketCategory; subject: string; message: string; orderId: number | null }
+
+export type AdminTicket = { ticket: SupportTicket; customerName: string; customerEmail: string }
+
+export type PreOrderStatus = 'WAITING' | 'NOTIFIED' | 'CANCELLED'
+
+export type PreOrder = {
+  id: number
+  productId: number
+  productName: string
+  quantity: number
+  status: PreOrderStatus
+  createdAt: string
+  notifiedAt: string | null
+}
+
+export type PreOrderDemand = { productId: number; productName: string; requests: number; quantity: number }
+
+// Journal des changements de prix (assistant admin)
+export type PriceChange = {
+  id: number
+  batchId: string
+  productId: number
+  productName: string
+  authorName: string | null
+  kind: 'PROMOTION' | 'PRICE'
+  oldPrice: number
+  newPrice: number
+  oldCompareAtPrice: number | null
+  newCompareAtPrice: number | null
+  endsAt: string | null
+  createdAt: string
+  revertedAt: string | null
+  revertReason: 'UNDO' | 'EXPIRED' | 'OVERRIDDEN' | null
+}
+
 export type ProblemDetail = {
   title?: string
   status?: number

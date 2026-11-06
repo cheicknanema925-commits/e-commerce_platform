@@ -62,6 +62,11 @@ java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod  
 - Tableaux qui défilent : conteneur `relative overflow-x-auto` (sinon les libellés `sr-only` élargissent la page)
 - Envoi de fichiers : `FormData` passé tel quel à `apiRequest` (le navigateur écrit le Content-Type multipart)
 - CI : job `frontend` (npm ci, lint, test, build)
+- Assistants : `api/agent.ts` lit le flux SSE avec `fetch` + `apiStream` (jamais `EventSource` : POST et jeton en
+  en-tête), `lib/sse.ts` (lecteur incrémental), `lib/agentChat.ts` (reducer pur, testé), `hooks/useAgentChat.ts`,
+  `components/agent/AgentChat.tsx` (partagé) ; boutique : `ChatWidget` (bouton flottant, fenêtre non modale) ;
+  admin : `/admin/assistant`, `/admin/demandes`, `/admin/prix` ; client : `/demandes`, `PreOrderButton` (rupture)
+- Texte du modèle affiché comme TEXTE ; fiches produits et cartes « Confirmer » viennent du serveur et font foi
 
 ## Profils
 
@@ -98,7 +103,7 @@ java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod  
   mariama ADMIN) ; realm importé depuis `keycloak/realm/realm-boutique.json` ; console http://localhost:8180
 - Connexion : verrouillage après 5 échecs (15 min), audit dans `login_events`, même message d'erreur quel que soit le cas
 - Connexion ET inscription : 10 requêtes/min par IP (`AuthRateLimitFilter`, en mémoire) ; tous les champs d'entrée ont un `@Size`
-- Audit OWASP et risques planifiés : `docs/audit-securite.md` (à relire aux étapes 7, 9 et 10)
+- Audit OWASP (et OWASP LLM pour les assistants) et risques planifiés : `docs/audit-securite.md` (à relire aux étapes 9 et 10)
 - BCrypt refuse plus de 72 octets : vérifié avant chaque appel au `PasswordEncoder`
 - `.env` : `JWT_SECRET` (32 caractères min, sinon l'appli refuse de démarrer), `ADMIN_EMAIL`, `ADMIN_PASSWORD` (premier admin)
 - Tests : `jwt()` (spring-security-test) pour les tests de tranche, vrais jetons via `/api/auth/login` pour l'intégration ;
@@ -175,6 +180,40 @@ java -jar target/boutique-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod  
 - Journal `payment_events` pour chaque étape ; espèces à la livraison (`CASH_ON_DELIVERY`) : préparée sans paiement,
   paiement « cash » enregistré à DELIVERED (événement `OrderDeliveredEvent` écouté de façon synchrone), refus à la porte
 - Dev : `POST /api/dev/fake-payments/{référence}/paye|annule` simule la page de paiement et le webhook signé
+
+## Agent IA (étape 8, Spring AI 2.0.2 + Ollama)
+
+- Package `agent` (dépend de tous les autres, jamais l'inverse) : deux `ChatClient` séparés dans `AgentConfig`
+  (`clientAgent` : `ClientTools` + `CustomerServiceTools` ; `adminAgent` : `AdminTools`), chacun son prompt
+  (`resources/agent/*-system-prompt.txt`, variables `{today}` et `{calendar}` injectées à chaque message)
+- Routes : `/api/agent/**` (connecté), `/api/admin/agent/**` (ADMIN) ; `POST …/chat` en SSE (`token`, `products`,
+  `proposal`, `warning`, `error`, `done`), `GET`/`DELETE …/conversation`, `POST …/proposals/{id}/confirm|cancel`
+- Outils = fines prises vers les services existants, via `ToolRunner` (journal `agent_tool_calls`, refus métier →
+  `{"erreur": …}` pour le modèle) ; identité dans `TurnContext` (passé par le `ToolContext`, invisible du modèle)
+- Toute écriture est PROPOSÉE (`turn.propose(ProposalStep)`), enregistrée dans `agent_proposals`, puis exécutée au
+  clic par un `StepHandler` (`agent()` = CLIENT ou ADMIN) ; réservation atomique (`claim`), 15 min, une étape en
+  échec n'annule pas les autres ; plusieurs actions dans un message = une seule carte
+- Garde-fous : outil inconnu → `RefusedToolCallback` (resolver de secours) ; 6 appels d'outils par tour, 3 par outil ;
+  20 messages/min ; `AmountVerifier` (montants cités ≠ montants lus en base → avertissement) ; avis = citations
+  (`UntrustedText`) ; « aucun prix modifié » si seul un aperçu a été calculé
+- Petit modèle : les outils d'action acceptent un NOM de produit (`ProductFinder` ; choix d'office seulement sur une
+  correspondance par mots-clés sans ambiguïté) ; 0 dans un paramètre facultatif = absent ; erreurs qui disent quoi
+  faire ensuite ; champs vides retirés des fiches envoyées au modèle
+- RAG : `ProductIndexer` (pgvector, `nomic-embed-text`, 768 dimensions) indexe nom/marque/catégorie/description après
+  le commit (`ProductChangedEvent`, `@Async`) et au démarrage ; prix et stock toujours relus en base ;
+  `boutique.agent.semantic-search=false` dans les tests
+- Modules métier ajoutés : `support` (tickets, 5 ouverts max, commande du client vérifiée), `preorder` (produit en
+  rupture seulement, `ProductBackInStockEvent` publié par `catalog` et `order`, notification AFTER_COMMIT +
+  `REQUIRES_NEW`), `pricing` (journal `price_changes`, limites : prix > 0, remise ≤ 70 %, date de fin obligatoire
+  ≤ 90 jours, hausse ≤ ×2, 50 produits ; tout ou rien si un prix a changé depuis l'aperçu ; annulation du dernier lot ;
+  `PromotionExpiryJob` chaque minute, désactivé dans les tests)
+- Tests : `ScriptedChatModel` (faux modèle scénarisé, `AgentTestConfiguration`) pour la CI ; évaluation avec le vrai
+  modèle : `./mvnw test -Peval` (tag `eval`, exclu par défaut, sautée si Ollama ne tourne pas, rapport
+  `target/agent-evaluation.md`, seuil `-Deval.minScore`)
+- Ollama (dev) : `~/.local/bin/ollama serve` ; modèles `llama3.2:3b-instruct-q4_K_M` et `nomic-embed-text` ;
+  ≈ 1 min par réponse sur processeur
+- Essais manuels : lancer l'API depuis une COPIE du jar (un `./mvnw verify` remplace `target/*.jar` sous une JVM
+  en cours d'exécution → `NoClassDefFoundError`)
 
 ## Erreurs
 

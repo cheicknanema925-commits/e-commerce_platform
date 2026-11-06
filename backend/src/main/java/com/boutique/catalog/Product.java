@@ -106,6 +106,18 @@ public class Product {
 		this.compareAtPrice = compareAtPrice;
 	}
 
+	// Changement de prix seul (promotion, nouveau prix, annulation) : mêmes règles que la fiche produit
+	public void reprice(BigDecimal price, BigDecimal compareAtPrice) {
+		if (price == null || price.signum() <= 0) {
+			throw new IllegalArgumentException("Le prix doit être positif");
+		}
+		if (compareAtPrice != null && compareAtPrice.compareTo(price) <= 0) {
+			throw new InvalidPromotionException();
+		}
+		this.price = price;
+		this.compareAtPrice = compareAtPrice;
+	}
+
 	// Remise en pourcentage, arrondie à l'entier inférieur (jamais annoncer plus que la vraie remise) ; null sans promotion
 	public Integer getDiscountPercent() {
 		if (compareAtPrice == null) {

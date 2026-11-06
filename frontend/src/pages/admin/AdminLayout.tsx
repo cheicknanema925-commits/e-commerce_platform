@@ -18,12 +18,15 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
       { to: '/admin/commandes', label: 'Commandes', icon: 'bag', badge: 'orders' },
       { to: '/admin/paiements', label: 'Paiements', icon: 'cash', badge: 'cash' },
       { to: '/admin/analyse', label: 'Analyse des ventes', icon: 'chart' },
+      { to: '/admin/assistant', label: 'Assistant IA', icon: 'chat' },
     ],
   },
   {
     title: 'Gestion',
     items: [
       { to: '/admin/clients', label: 'Clients', icon: 'users' },
+      { to: '/admin/demandes', label: 'Demandes clients', icon: 'headset' },
+      { to: '/admin/prix', label: 'Journal des prix', icon: 'return' },
       { to: '/admin/infolettre', label: 'Infolettre', icon: 'mail' },
       { to: '/admin/livreurs', label: 'Livreurs', icon: 'truck' },
       { to: '/admin/parametres', label: 'Paramètres', icon: 'settings' },

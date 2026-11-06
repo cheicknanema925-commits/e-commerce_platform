@@ -4,6 +4,7 @@ import { useAuth } from '../auth/useAuth.ts'
 import { useCategories } from '../hooks/useCatalog.ts'
 import { useCart } from '../hooks/useCart.ts'
 import { useFavoriteIds, useStoreSettings } from '../hooks/useShop.ts'
+import { ChatWidget } from './agent/ChatWidget.tsx'
 import { CartDrawer } from './CartDrawer.tsx'
 import { Icon } from './Icon.tsx'
 import { Logo } from './Logo.tsx'
@@ -59,9 +60,15 @@ export function Layout() {
             <strong className="font-semibold text-safran">Orange Money</strong> ou{' '}
             <strong className="font-semibold text-safran">en espèces à la livraison</strong>
           </p>
-          <a href="#aide" className="hidden hover:text-white md:block">
-            Aide et service client
-          </a>
+          {status === 'authenticated' ? (
+            <Link to="/demandes" className="hidden hover:text-white md:block">
+              Aide et service client
+            </Link>
+          ) : (
+            <a href="#aide" className="hidden hover:text-white md:block">
+              Aide et service client
+            </a>
+          )}
         </div>
       </div>
 
@@ -227,6 +234,11 @@ export function Layout() {
                   Suivre ma commande
                 </Link>
               </li>
+              <li>
+                <Link to="/demandes" className="hover:text-white hover:underline">
+                  Écrire au service client
+                </Link>
+              </li>
               <li>Livraison à domicile partout au Sénégal</li>
             </ul>
           </div>
@@ -248,6 +260,7 @@ export function Layout() {
       </footer>
 
       {status === 'authenticated' && <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />}
+      <ChatWidget />
     </div>
   )
 }

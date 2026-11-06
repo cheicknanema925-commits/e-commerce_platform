@@ -21,6 +21,30 @@ spring:
     error:
       # Jamais de stack trace dans les réponses HTTP, quel que soit le profil
       include-stacktrace: never
+  ai:
+    ollama:
+      # Modèles locaux en développement (Ollama) ; un autre fournisseur se branche par configuration
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      chat:
+        model: ${OLLAMA_CHAT_MODEL:llama3.2:3b-instruct-q4_K_M}
+        # Peu de fantaisie : un assistant de boutique doit être précis et régulier
+        temperature: 0.2
+      embedding:
+        model: ${OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
+    chat:
+      memory:
+        repository:
+          jdbc:
+            # Table créée par Flyway (V16), jamais par Spring AI
+            initialize-schema: never
+    vectorstore:
+      pgvector:
+        # Table et index créés par Flyway (V16) ; 768 = taille des vecteurs de nomic-embed-text
+        initialize-schema: false
+        dimensions: 768
+        id-type: text
+        index-type: hnsw
+        distance-type: cosine-distance
   servlet:
     multipart:
       # Photos des produits : 5 Mo par fichier (au-delà : 413), elles sont ensuite réduites par ImageProcessor
@@ -58,6 +82,23 @@ boutique:
   catalog:
     # Dossier des photos des produits (relatif au dossier de lancement ; en production, un volume Docker)
     images-dir: ${IMAGES_DIR:./data/images}
+
+  pricing:
+    expiry:
+      # Fin des promotions : chaque minute, les prix d'avant sont rétablis
+      enabled: true
+      interval: PT1M
+
+  agent:
+    # Garde-fous de la boucle : au plus 6 appels d'outils par message, 3 fois le même outil
+    max-tool-calls: 6
+    max-calls-per-tool: 3
+    # Mémoire : les 20 derniers messages de la conversation sont renvoyés au modèle
+    memory-messages: 20
+    # Une action proposée doit être confirmée dans les 15 minutes, sinon elle expire
+    proposal-ttl: 15m
+    # Limite par utilisateur (un modèle coûte cher en calcul : pas d'abus)
+    messages-per-minute: 20
 
   payment:
     # fake (développement, tests) ou paydunya. Le faux fournisseur est refusé avec le profil prod.

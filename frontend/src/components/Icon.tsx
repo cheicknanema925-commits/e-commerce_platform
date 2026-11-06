@@ -27,6 +27,8 @@ const PATHS = {
   addCircle: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 8v8M8 12h8',
   chart: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
   users: 'M9 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2.5 20c1-3.5 3.5-5.5 6.5-5.5s5.5 2 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c1.8.8 3 2.6 3.5 5.2',
+  chat: 'M4 5h16v11H9l-5 4V5zM8 9.5h8M8 12.5h5',
+  send: 'M4 12l16-8-6 16-2.5-6.5L4 12zM11.5 13.5L20 4',
 } as const
 
 export type IconName = keyof typeof PATHS
