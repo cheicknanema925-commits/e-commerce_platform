@@ -4,6 +4,7 @@ import { AddToCart } from '../components/AddToCart.tsx'
 import { ErrorMessage } from '../components/ErrorMessage.tsx'
 import { FavoriteButton } from '../components/FavoriteButton.tsx'
 import { Icon } from '../components/Icon.tsx'
+import { PreOrderButton } from '../components/PreOrderButton.tsx'
 import { PriceTag } from '../components/PriceTag.tsx'
 import { ProductGallery } from '../components/ProductGallery.tsx'
 import { StarRating } from '../components/StarRating.tsx'
@@ -92,6 +93,7 @@ export function ProductPage() {
           </div>
           <p className={`mt-3 font-medium ${stockInfo.className}`}>{stock > 5 ? `En stock (${stock} disponibles)` : stockInfo.text}</p>
           <AddToCart product={product.data} />
+          <PreOrderButton product={product.data} />
           <div className="mt-3">
             <FavoriteButton product={product.data} large />
           </div>

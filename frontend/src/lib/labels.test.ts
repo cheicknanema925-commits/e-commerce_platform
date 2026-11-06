@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { adminActionLabel, orderStatusLabel } from './labels.ts'
+import { adminActionLabel, orderStatusLabel, priceChangeStateLabel, ticketCategoryLabel, ticketStatusLabel } from './labels.ts'
 
 describe('orderStatusLabel', () => {
   it('distingue l’attente de paiement (en ligne) de l’attente de confirmation (espèces)', () => {
@@ -17,5 +17,19 @@ describe('adminActionLabel', () => {
   it('confirme une commande en espèces au moment de la préparer', () => {
     expect(adminActionLabel('PREPARING', 'CASH_ON_DELIVERY')).toBe('Confirmer et préparer')
     expect(adminActionLabel('PREPARING', 'ONLINE')).toBe('Passer en préparation')
+  })
+})
+
+describe('libellés du service client et du journal des prix', () => {
+  it('traduit les types et statuts des demandes', () => {
+    expect(ticketCategoryLabel('DELIVERY')).toBe('Livraison')
+    expect(ticketStatusLabel('OPEN')).toBe('En attente de réponse')
+    expect(ticketStatusLabel('ANSWERED')).toBe('Répondu')
+  })
+
+  it('explique pourquoi un changement de prix n’est plus en place', () => {
+    expect(priceChangeStateLabel({ revertReason: null })).toBe('En place')
+    expect(priceChangeStateLabel({ revertReason: 'EXPIRED' })).toBe('Promotion terminée')
+    expect(priceChangeStateLabel({ revertReason: 'OVERRIDDEN' })).toBe('Remplacé entre-temps')
   })
 })

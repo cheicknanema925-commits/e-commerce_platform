@@ -101,6 +101,30 @@ export async function apiDownload(path: string, fallbackName: string): Promise<v
   URL.revokeObjectURL(url)
 }
 
+// Réponse en flux (Server-Sent Events de l'assistant) : même jeton et même renouvellement qu'apiRequest, mais le corps
+// est rendu tel quel pour être lu au fur et à mesure (response.json() attendrait la fin de la réponse)
+export async function apiStream(path: string, body: unknown, signal?: AbortSignal): Promise<ReadableStream<Uint8Array>> {
+  const send = () => {
+    const headers: Record<string, string> = { Accept: 'text/event-stream', 'Content-Type': 'application/json' }
+    if (accessToken) {
+      headers.Authorization = `Bearer ${accessToken}`
+    }
+    return fetch(buildUrl(path), { method: 'POST', headers, credentials: 'same-origin', body: JSON.stringify(body), signal })
+  }
+  let response = await send()
+  if (response.status === 401 && accessToken !== null) {
+    if (await refreshAccessToken()) {
+      response = await send()
+    } else {
+      sessionExpiredListener?.()
+    }
+  }
+  if (!response.ok || !response.body) {
+    throw new ApiError(response.status, await readProblem(response))
+  }
+  return response.body
+}
+
 export function apiGet<T>(path: string, params: QueryParams = {}): Promise<T> {
   return apiRequest<T>('GET', path, { params })
 }
