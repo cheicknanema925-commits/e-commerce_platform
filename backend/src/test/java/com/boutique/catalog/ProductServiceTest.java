@@ -21,6 +21,8 @@ class ProductServiceTest {
 
 	private CategoryRepository categoryRepository;
 
+	private ApplicationEventPublisher events;
+
 	private ProductService productService;
 
 	private final Category mode = new Category("Mode", "mode");
@@ -29,7 +31,8 @@ class ProductServiceTest {
 	void setUp() {
 		productRepository = mock(ProductRepository.class);
 		categoryRepository = mock(CategoryRepository.class);
-		productService = new ProductService(productRepository, categoryRepository, mock(ApplicationEventPublisher.class));
+		events = mock(ApplicationEventPublisher.class);
+		productService = new ProductService(productRepository, categoryRepository, events);
 	}
 
 	@Test
@@ -52,6 +55,8 @@ class ProductServiceTest {
 		assertThat(response.name()).isEqualTo("Boubou bazin riche");
 		assertThat(product.getPrice()).isEqualByComparingTo("30000");
 		verify(productRepository, never()).save(any());
+		// L'index de recherche de l'agent sera mis à jour après le commit
+		verify(events).publishEvent(new ProductChangedEvent(1L, false));
 	}
 
 	@Test

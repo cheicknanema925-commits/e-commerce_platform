@@ -7,6 +7,13 @@ boutique:
     keycloak:
       # Émetteur fictif : les tests simulent des jetons Keycloak avec jwt() sans serveur Keycloak réel
       issuer-uri: http://keycloak.test/realms/boutique
+  pricing:
+    # Pas de tâche planifiée : les tests appellent expirePromotions() eux-mêmes
+    expiry:
+      enabled: false
+  agent:
+    # Pas de recherche par le sens dans les tests : aucun modèle d'embeddings n'y tourne, résultats déterministes
+    semantic-search: false
   catalog:
     # Photos écrites pendant les tests : dans target/, effacé par ./mvnw clean
     images-dir: target/test-images

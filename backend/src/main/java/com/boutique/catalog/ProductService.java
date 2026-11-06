@@ -48,19 +48,26 @@ public class ProductService {
 			throw new DuplicateSkuException(sku);
 		}
 		product.updateMerchandising(blankToNull(request.brand()), sku, request.compareAtPrice());
-		return ProductResponse.from(productRepository.save(product));
+		ProductResponse created = ProductResponse.from(productRepository.save(product));
+		events.publishEvent(new ProductChangedEvent(created.id(), false));
+		return created;
 	}
 
 	@Transactional
 	public ProductResponse update(Long id, ProductRequest request) {
 		Product product = getProduct(id);
+		boolean wasOutOfStock = product.getStock() == 0;
 		product.update(getCategory(request.categoryId()), request.name(), request.description(), request.price(),
 				request.stock());
+		if (wasOutOfStock && product.getStock() > 0) {
+			events.publishEvent(new ProductBackInStockEvent(id));
+		}
 		String sku = normalizeSku(request.sku());
 		if (sku != null && productRepository.existsBySkuAndIdNot(sku, id)) {
 			throw new DuplicateSkuException(sku);
 		}
 		product.updateMerchandising(blankToNull(request.brand()), sku, request.compareAtPrice());
+		events.publishEvent(new ProductChangedEvent(id, false));
 		// Pas de save() : le produit est suivi par le contexte de persistance, l'UPDATE part au commit
 		return ProductResponse.from(product);
 	}
@@ -72,6 +79,7 @@ public class ProductService {
 		List<String> filenames = product.getImages().stream().map(ProductImage::getFilename).toList();
 		productRepository.delete(product);
 		events.publishEvent(new ProductImagesDeletedEvent(filenames));
+		events.publishEvent(new ProductChangedEvent(id, true));
 	}
 
 	// Référence en majuscules, sans espaces autour ; vide = laissée au serveur

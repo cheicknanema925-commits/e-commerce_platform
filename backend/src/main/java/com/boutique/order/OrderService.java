@@ -16,6 +16,7 @@ import com.boutique.cart.Cart;
 import com.boutique.cart.CartRepository;
 import com.boutique.cart.EmptyCartException;
 import com.boutique.catalog.Product;
+import com.boutique.catalog.ProductBackInStockEvent;
 import com.boutique.catalog.ProductNotFoundException;
 import com.boutique.catalog.ProductRepository;
 import com.boutique.common.PageResponse;
@@ -189,7 +190,15 @@ public class OrderService {
 	}
 
 	private void restock(Order order) {
-		order.getItems().forEach((item) -> item.getProduct().addStock(item.getQuantity()));
+		order.getItems().forEach((item) -> {
+			Product product = item.getProduct();
+			boolean wasOutOfStock = product.getStock() == 0;
+			product.addStock(item.getQuantity());
+			if (wasOutOfStock) {
+				// Les clients qui attendaient ce produit (pré-commandes) seront prévenus après le commit
+				eventPublisher.publishEvent(new ProductBackInStockEvent(product.getId()));
+			}
+		});
 	}
 
 	// 404 (et pas 403) pour la commande d'un autre : on ne révèle même pas qu'elle existe
