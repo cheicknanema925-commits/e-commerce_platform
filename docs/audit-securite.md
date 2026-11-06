@@ -1,4 +1,4 @@
-# Audit de sécurité – OWASP Top 10 (étape 4, revu à l'étape 7)
+# Audit de sécurité – OWASP Top 10 (étape 4, revu aux étapes 7 et 8)
 
 - **Date** : 3 novembre 2026
 - **Périmètre** : API backend (Spring Boot 4.1.2, Spring Security 7.1.2), branche `main` après l'étape 4A
@@ -72,4 +72,32 @@ fournisseur). Contrôles en place et leur preuve :
 | A04 | Paramètres de paiement appliqués par le serveur à chaque commande (masquer un bouton ne suffit pas) | `StoreSettingsIntegrationTests` |
 | A03 | Exports CSV : injection de formule neutralisée (`=`, `+`, `-`, `@` préfixés d'une apostrophe) | `CsvWriterTest.formulaInjectionIsNeutralized`, `exportsAreCsvFilesForExcel` |
 | A01 | Livreurs, paramètres, abonnés, exports : réservés à l'ADMIN (403 pour un client) | `customerCannotManageCouriers`, `exportsAreCsvFilesForExcel` |
+
+## Revue de l'étape 8 : assistants IA (OWASP Top 10 pour les applications LLM, édition 2025)
+
+Principe : le modèle est traité comme un **utilisateur non fiable** qui écrit du texte. Il ne voit que les outils de
+son assistant, il ne peut que PROPOSER une action, et les limites sont dans le code (jamais seulement dans le prompt).
+Chaque garde-fou a été retiré une fois volontairement pour vérifier qu'un test échoue sans lui (tests de mutation).
+
+| OWASP LLM | Contrôle | Preuve |
+|---|---|---|
+| LLM01 Injection de prompt | Avis clients transmis comme citations encadrées et marquées « données non fiables », fausses balises neutralisées ; même un modèle qui « obéit » à l'avis ne peut rien exécuter (outil absent, limite de prix, confirmation) | `instructionsHiddenInAReviewStayQuotedAndCannotActAlone`, `instructionHiddenInAReviewCannotDiscountTheCatalog` |
+| LLM02 Divulgation d'informations | Identité lue dans le jeton et passée aux outils par le `ToolContext` (invisible pour le modèle) : aucun paramètre « client » ; commande ou proposition d'un autre client = 404 | `customerOrdersAreNeverThoseOfSomeoneElse`, `anotherCustomerCannotConfirmTheProposal` |
+| LLM05 Sortie mal gérée | Texte du modèle affiché comme texte React (jamais en HTML ni en Markdown) ; montants cités vérifiés contre ceux lus en base (`AmountVerifier`) ; fiches et cartes d'action construites par le serveur | `inventedPriceIsFlagged`, `inventedRevenueIsFlagged`, `AmountVerifierTest` |
+| LLM06 Autonomie excessive | Deux assistants séparés (outils, route, mémoire) ; outil inconnu ou d'un autre assistant refusé et journalisé ; toute écriture = proposition exécutée au CLIC (réservation atomique, double clic → 409, expiration 15 min) ; une proposition admin ne se confirme pas par la route client | `clientAgentCannotRunAnAdminTool`, `addToCartWaitsForTheCustomerClick`, `adminProposalCannotBeConfirmedThroughTheClientRoute`, `customerCannotReachTheAdminAgent` |
+| LLM06 Autonomie excessive (prix) | Limites dans `PricingService` : prix > 0, remise ≤ 70 %, date de fin obligatoire (≤ 90 jours, et `CHECK` en base), hausse ≤ ×2, 50 produits maximum, jamais « tout le catalogue » ; aperçu périmé → rien n'est appliqué ; annulation qui n'écrase pas une modification ultérieure | `limitsAreEnforcedByTheCode`, `hundredPercentPromotionAndPromotionWithoutEndAreRefused`, `stalePreviewChangesNothing`, `databaseRefusesAPromotionWithoutEndEvenIfTheCodeWereBypassed` |
+| LLM07 Fuite du prompt système | Le prompt ne contient aucun secret ni règle de sécurité dont dépendrait la protection : le lire n'apprend rien d'exploitable | Relecture (`agent/*-system-prompt.txt`) |
+| LLM08 Faiblesses des vecteurs | Seuls les textes écrits par l'admin (nom, marque, catégorie, description) sont indexés, jamais les avis ; prix et stock relus en base après la recherche ; produit trouvé « par le sens » jamais choisi d'office | `similarProductsAreReadAgainFromDatabase`, `productFoundOnlyBySenseIsNeverPickedAutomatically` |
+| LLM09 Désinformation | Prompt : tout chiffre vient d'un outil ; avertissement si un montant ne correspond à rien ; « aucun prix n'a été modifié » si seul un aperçu a été calculé ; l'interface rappelle que les fiches et le bouton « Confirmer » font foi | `previewAloneIsNeverPresentedAsAChange`, évaluation (`./mvnw test -Peval`) |
+| LLM10 Consommation non bornée | 20 messages/min par utilisateur (429) ; 1 000 caractères par message ; 6 appels d'outils par tour, 3 par outil ; mémoire limitée aux 20 derniers messages ; journal `agent_tool_calls` (outil, arguments, résultat, durée) | `tooManyMessagesAreRejected`, `runawayToolLoopIsStopped` |
+| A10 (SSRF) | Aucun outil ne fait d'appel réseau choisi par le modèle : seul Ollama, à une adresse fixée par la configuration | Relecture |
+
+Risques restants :
+
+| # | Gravité | Constat | Traitement | État |
+|---|---|---|---|---|
+| 12 | Moyenne | Le petit modèle local (3 milliards de paramètres) se trompe : date mal choisie, « c'est fait » alors que rien n'est fait, outil oublié | Sans conséquence grâce à la confirmation (la carte dit la vérité) ; mesuré par l'évaluation ; modèle plus capable en production (changement de configuration Spring AI) | Accepté, mesuré |
+| 13 | Moyenne | Limite de débit de l'assistant en mémoire, par instance : contournable avec plusieurs instances | Stockage partagé (Redis) si l'API passe à plusieurs instances | Planifié (étape 9) |
+| 14 | Faible | Modèles téléchargés depuis le registre Ollama sans vérification d'empreinte (chaîne d'approvisionnement, LLM03) | Épingler l'empreinte (digest) du modèle dans le déploiement | Planifié (étape 9) |
+| 15 | Faible | Une réponse lente (≈ 1 min sur processeur) occupe une connexion HTTP ; beaucoup d'utilisateurs simultanés satureraient le serveur | File d'attente / délai maximal par réponse, modèle sur GPU ou hébergé | Planifié (étape 9) |
 
